@@ -77,10 +77,25 @@ impl Pack for Escrow {
     }
 }
 
+use bincode::Decode;
+use bincode::Encode;
+use std::collections::HashMap;
+
+#[derive(Encode, Decode, PartialEq, Debug)]
 pub struct State {
     pub initialized: bool,
     pub(crate) initializer: Pubkey,
-    pub(crate) output_token_minter: Pubkey,
-    pub(crate) input_token_1: Pubkey,
-    pub(crate) input_token_2: Pubkey,
+    pub(crate) mint_to_account: HashMap<Pubkey, Pubkey>,
+    pub(crate) input_configs: HashMap<Pubkey, InputConfig>,
+    pub(crate) output_configs: HashMap<Pubkey, OutputConfig>,
+}
+
+#[derive(Clone)]
+pub struct InputConfig {
+    pub amount: u64,
+}
+
+#[derive(Clone)]
+pub struct OutputConfig {
+    pub amount: u64,
 }
