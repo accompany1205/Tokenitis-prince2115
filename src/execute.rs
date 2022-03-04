@@ -1,30 +1,34 @@
-use bincode::Decode;
-use bincode::Encode;
-use instruction::Instruction;
-use solana_program::account_info::{next_account_info, AccountInfo};
-use solana_program::entrypoint::ProgramResult;
-use solana_program::program::{invoke, invoke_signed};
-use solana_program::program_error::ProgramError;
-use solana_program::pubkey::Pubkey;
-use solana_program::sysvar::Sysvar;
-use spl_token::solana_program::program_pack::Pack;
-use state::{InputConfig, OutputConfig, State};
-use std::borrow::Borrow;
-use std::collections::HashMap;
-use std::ops::{Deref, Index};
+use crate::{
+    instruction::Instruction,
+    state::{State, SEED},
+};
+use solana_program::{
+    account_info::{next_account_info, AccountInfo},
+    entrypoint::ProgramResult,
+    program::{invoke, invoke_signed},
+    program_error::ProgramError,
+    pubkey::Pubkey,
+};
 
-pub struct GetOutput<'a> {
+pub struct Execute<'a> {
     program_id: Pubkey,
-    accounts: GetOutputAccounts<'a>,
-    instruction: GetOutputInstruction,
+    accounts: ExecuteAccounts<'a>,
+    args: ExecuteArgs,
 }
 
-#[derive(Encode, Decode, PartialEq, Debug)]
-pub struct GetOutputInstruction {}
+pub struct ExecuteArgs {
+    direction: Direction,
+}
 
-struct GetOutputAccounts<'a> {
+pub enum Direction {
+    Forward,
+    Reverse,
+}
+
+struct ExecuteAccounts<'a> {
     token_program: &'a AccountInfo<'a>,
     state: &'a AccountInfo<'a>,
+    pda: &'a AccountInfo<'a>,
     caller: &'a AccountInfo<'a>,
     caller_inputs: Vec<&'a AccountInfo<'a>>,
     inputs: Vec<&'a AccountInfo<'a>>,
@@ -32,87 +36,98 @@ struct GetOutputAccounts<'a> {
     outputs: Vec<&'a AccountInfo<'a>>,
 }
 
-// TODO add validation
-
-impl GetOutput {
+impl Execute<'_> {
     pub fn new(
         program_id: Pubkey,
         accounts: &[AccountInfo],
-        instruction_data: &[u8],
-    ) -> Result<Self, ProgramError> {
+        instruction: ExecuteArgs,
+    ) -> Result<Box<dyn Instruction>, ProgramError> {
         let accounts = &mut accounts.iter();
 
         let token_program = next_account_info(accounts)?;
         let state = next_account_info(accounts)?;
+        let pda = next_account_info(accounts)?;
         let caller = next_account_info(accounts)?;
 
         let program_state = state.deserialize_data::<State>()?;
 
         let mut caller_inputs: Vec<&AccountInfo> = Vec::new();
-        for _ in 0..program_state.input_configs.len() {
+        for _ in 0..program_state.input_amount.len() {
             caller_inputs.push(next_account_info(accounts)?)
         }
 
         let mut inputs: Vec<&AccountInfo> = Vec::new();
-        for _ in 0..program_state.input_configs.len() {
+        for _ in 0..program_state.input_amount.len() {
             inputs.push(next_account_info(accounts)?)
         }
 
         let mut caller_outputs: Vec<&AccountInfo> = Vec::new();
-        for _ in 0..program_state.output_configs.len() {
+        for _ in 0..program_state.output_amount.len() {
             caller_outputs.push(next_account_info(accounts)?)
         }
 
         let mut outputs: Vec<&AccountInfo> = Vec::new();
-        for _ in 0..program_state.output_configs.len() {
+        for _ in 0..program_state.output_amount.len() {
             outputs.push(next_account_info(accounts)?)
         }
 
-        Ok(GetOutput {
+        Ok(Box::new(Execute {
             program_id,
-            accounts: GetInputAccounts {
+            accounts: ExecuteAccounts {
                 token_program,
                 state,
+                pda,
                 caller,
                 caller_inputs,
                 inputs,
                 caller_outputs,
                 outputs,
             },
-            instruction: GetOutputInstruction {},
-        })
+            args: instruction,
+        }))
     }
 }
 
-impl Instruction for GetOutput {
+impl Instruction for Execute<'_> {
     fn validate(&self) -> ProgramResult {}
 
     fn execute(&mut self) -> ProgramResult {
         let accounts = &self.accounts;
         let program_state = accounts.state.deserialize_data::<State>()?;
-        let (pda, _nonce) = Pubkey::find_program_address(&[b"tokenitis"], &self.program_id);
+        let (pda, _nonce) = Pubkey::find_program_address(&[SEED], &self.program_id);
 
         for i in 0..accounts.caller_inputs.len() {
             let caller_input = *accounts.caller_inputs.index(i);
-            let input = *accounts.inputs.index(i);
+
+            let dst: &AccountInfo;
+            let mut amount: u64 = 0;
+            if self.args.direction == Direction::Forward {
+                dst = *accounts.inputs.index(i);
+                amount = *program_state
+                    .input_amount
+                    .get(dst.key)
+                    .ok_or(ProgramError::InvalidArgument)?;
+            } else {
+                dst = *accounts.outputs.index(i);
+                amount = *program_state
+                    .output_amount
+                    .get(dst.key)
+                    .ok_or(ProgramError::InvalidArgument)?;
+            }
+
             let transfer_ix = spl_token::instruction::transfer(
                 accounts.token_program.key,
                 caller_input.key,
-                input.key,
+                dst.key,
                 accounts.caller.key,
                 &[accounts.caller.key],
-                program_state
-                    .input_configs
-                    .get(input.key)
-                    .ok_or(ProgramError::InvalidArgument)?
-                    .amount,
+                amount,
             )?;
-
             invoke(
                 &transfer_ix,
                 &[
                     caller_input.clone(),
-                    input.clone(),
+                    dst.clone(),
                     accounts.caller.clone(),
                     accounts.token_program.clone(),
                 ],
@@ -120,30 +135,41 @@ impl Instruction for GetOutput {
         }
 
         for i in 0..accounts.caller_outputs.len() {
-            let output = *accounts.outputs.index(i);
+            let src: &AccountInfo;
+            let amount: u64;
+            if self.args.direction == Direction::Forward {
+                src = *accounts.outputs.index(i);
+                amount = *program_state
+                    .output_amount
+                    .get(src.key)
+                    .ok_or(ProgramError::InvalidArgument)?;
+            } else {
+                src = *accounts.inputs.index(i);
+                amount = *program_state
+                    .input_amount
+                    .get(src.key)
+                    .ok_or(ProgramError::InvalidArgument)?;
+            }
+
             let caller_output = *accounts.caller_outputs.index(i);
             let transfer_ix = spl_token::instruction::transfer(
                 accounts.token_program.key,
-                output.key,
+                src.key,
                 caller_output.key,
                 &pda,
                 &[&pda],
-                program_state
-                    .input_configs
-                    .get(output.key)
-                    .ok_or(ProgramError::InvalidArgument)?
-                    .amount,
+                amount,
             )?;
 
             invoke_signed(
                 &transfer_ix,
                 &[
-                    output.clone(),
+                    src.clone(),
                     caller_output.clone(),
-                    pda.clone(),
+                    accounts.pda.clone(),
                     accounts.token_program.clone(),
                 ],
-                &[&[b"tokenitis"]],
+                &[&[SEED]],
             )?;
         }
 

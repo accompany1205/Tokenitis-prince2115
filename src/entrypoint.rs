@@ -1,29 +1,37 @@
 use solana_program::{
-    account_info::AccountInfo, entrypoint, entrypoint::ProgramResult, msg, pubkey::Pubkey,
+    account_info::AccountInfo, entrypoint, entrypoint::ProgramResult, pubkey::Pubkey,
 };
 
-use crate::instruction::EscrowInstruction;
-use crate::processor::Processor;
+use crate::{
+    execute::Execute, initialize::Initialize, instruction::Instruction, instruction::Tokenitis,
+};
+use bincode::config::Configuration;
 
-// TODO implement combine to token
+// TODO compilable
+// TODO upgrade dependencies
+// TODO client test
+// TODO create gui
+// TODO add validation
 
 entrypoint!(process_instruction);
 fn process_instruction(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    instruction_data: &[u8],
+    args: &[u8],
 ) -> ProgramResult {
-    // TODO remove existing instructions
-    // TODO this should be a trait - instruction should be validated then executed
+    let config = bincode::config::standard();
+    let args = bincode::decode_from_slice::<Tokenitis, Configuration>(args, config).map_err(Err(ProgramError::))?.0;
 
-    match instruction {
-        EscrowInstruction::InitEscrow { amount } => {
-            msg!("Instruction: InitEscrow");
-            Processor::process_init_escrow(accounts, amount, program_id)
+    let mut instruction: Box<dyn Instruction>;
+    match args {
+        Tokenitis::Initialize(args) => {
+            instruction = Initialize::new(*program_id, accounts, args)?;
         }
-        EscrowInstruction::Exchange { amount } => {
-            msg!("Instruction: Exchange");
-            Processor::process_exchange(accounts, amount, program_id)
+        Tokenitis::Execute(args) => {
+            instruction = Execute::new(*program_id, accounts, args)?;
         }
     }
+
+    instruction.validate()?;
+    instruction.execute()
 }

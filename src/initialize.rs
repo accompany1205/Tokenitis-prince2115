@@ -1,102 +1,83 @@
-use bincode::Decode;
-use bincode::Encode;
-use instruction::Instruction;
-use solana_program::account_info::{next_account_info, AccountInfo};
-use solana_program::entrypoint::ProgramResult;
-use solana_program::program::invoke;
-use solana_program::program_error::ProgramError;
-use solana_program::pubkey::Pubkey;
-use solana_program::sysvar::Sysvar;
-use spl_token::solana_program::program_pack::Pack;
-use state::{InputConfig, OutputConfig, State};
-use std::borrow::Borrow;
+use crate::{instruction::Instruction, state::State, state::SEED};
+use bincode::{Decode, Encode};
+use solana_program::{
+    account_info::{next_account_info, AccountInfo},
+    entrypoint::ProgramResult,
+    program::invoke,
+    program_error::ProgramError,
+    pubkey::Pubkey,
+};
+use spl_token::instruction::AuthorityType;
 use std::collections::HashMap;
 
 pub struct Initialize<'a> {
     program_id: Pubkey,
     accounts: InitializeAccounts<'a>,
-    instruction: InitializeInstruction,
+    args: InitializeArgs,
 }
 
+// TODO should we use u64?
+
 #[derive(Encode, Decode, PartialEq, Debug)]
-pub struct InitializeInstruction {
-    num_inputs: u64,
-    num_outputs: u64,
-    input_configs: HashMap<Pubkey, InputConfig>,
-    output_configs: HashMap<Pubkey, OutputConfig>,
+pub struct InitializeArgs {
+    input_amounts: HashMap<Pubkey, u64>,
+    output_amounts: HashMap<Pubkey, u64>,
 }
 
 struct InitializeAccounts<'a> {
     token_program: &'a AccountInfo<'a>,
-    rent: &'a AccountInfo<'a>,
     state: &'a AccountInfo<'a>,
     initializer: &'a AccountInfo<'a>,
-    inputs: Vec<&'a AccountInfo<'a>>,
-    outputs: Vec<&'a AccountInfo<'a>>,
+    token_accounts: Vec<&'a AccountInfo<'a>>,
 }
 
-// TODO simplify
-// TODO client test
-// TODO create gui
-// TODO add validation
-
-impl Initialize {
+impl Initialize<'_> {
     pub fn new(
         program_id: Pubkey,
         accounts: &[AccountInfo],
-        instruction_data: &[u8],
-    ) -> Result<Self, ProgramError> {
-        let instruction = bincode::deserialize::<InitializeInstruction>(instruction_data)?;
+        args: InitializeArgs,
+    ) -> Result<Box<dyn Instruction>, ProgramError> {
         let accounts = &mut accounts.iter();
 
         let token_program = next_account_info(accounts)?;
-        let rent = next_account_info(accounts)?;
         let state = next_account_info(accounts)?;
         let initializer = next_account_info(accounts)?;
 
-        let mut inputs: Vec<&AccountInfo> = Vec::new();
-        for _ in 0..instruction.num_inputs {
-            inputs.push(next_account_info(accounts)?)
+        let mut token_accounts: Vec<&AccountInfo> = Vec::new();
+        for _ in 0..(args.input_amounts.len() + args.output_amounts.len()) {
+            token_accounts.push(next_account_info(accounts)?)
         }
 
-        let mut outputs: Vec<&AccountInfo> = Vec::new();
-        for _ in 0..instruction.num_outputs {
-            outputs.push(next_account_info(accounts)?)
-        }
-
-        Ok(Initialize {
+        Ok(Box::new(Initialize {
             program_id,
             accounts: InitializeAccounts {
                 token_program,
-                rent,
                 state,
                 initializer,
-                inputs,
-                outputs,
+                token_accounts,
             },
-            instruction,
-        })
+            args: args,
+        }))
     }
 }
 
-impl Instruction for Initialize {
-    fn validate(&self) -> ProgramResult {}
+impl Instruction for Initialize<'_> {
+    fn validate(&self) -> ProgramResult {
+        Ok(())
+    }
 
     // input account should be empty token account
     // output account should be an account with entire token supply
     fn execute(&mut self) -> ProgramResult {
         let accounts = &self.accounts;
-        let (pda, _nonce) = Pubkey::find_program_address(&[b"tokenitis"], &self.program_id);
+        let (pda, _nonce) = Pubkey::find_program_address(&[SEED], &self.program_id);
 
-        let mut mint_to_account: HashMap<Pubkey, Pubkey> = HashMap::new();
-        for acc in accounts.inputs.iter().chain(accounts.outputs.iter()) {
-            let acc_data = spl_token::state::Account::unpack(acc.data.borrow())?;
-            mint_to_account.insert(acc_data.mint, acc.key.clone());
+        for token_account in accounts.token_accounts {
             let change_authority_ix = spl_token::instruction::set_authority(
                 accounts.token_program.key,
-                acc.key,
+                token_account.key,
                 Some(&pda),
-                spl_token::instruction::AuthorityType::AccountOwner,
+                AuthorityType::AccountOwner,
                 accounts.initializer.key,
                 &[&accounts.initializer.key],
             )?;
@@ -104,7 +85,7 @@ impl Instruction for Initialize {
             invoke(
                 &change_authority_ix,
                 &[
-                    accounts.input_token_1.clone(),
+                    token_account.clone(),
                     accounts.initializer.clone(),
                     accounts.token_program.clone(),
                 ],
@@ -118,13 +99,13 @@ impl Instruction for Initialize {
 
         let state = State {
             initialized: true,
-            initializer: accounts.initializer.key.clone(),
-            mint_to_account,
-            input_configs: self.instruction.input_configs.clone(),
-            output_configs: self.instruction.output_configs.clone(),
+            input_amount: self.args.input_amounts.clone(),
+            output_amount: self.args.output_amounts.clone(),
         };
-
-        accounts.state.serialize_data(&state)?;
+        let x = accounts
+            .state
+            .serialize_data(&state)
+            .map_err(Err(ProgramError::Custom(1)))?;
 
         Ok(())
     }

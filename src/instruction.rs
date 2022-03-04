@@ -1,17 +1,13 @@
-use solana_program::program_error::ProgramError;
-use std::convert::TryInto;
-
-use crate::error::EscrowError::InvalidInstruction;
-use solana_program::account_info::AccountInfo;
+use crate::{execute::ExecuteArgs, initialize::InitializeArgs};
 use solana_program::entrypoint::ProgramResult;
-use solana_program::pubkey::Pubkey;
 
 pub trait Instruction {
     fn validate(&self) -> ProgramResult;
     fn execute(&mut self) -> ProgramResult;
 }
 
-pub enum EscrowInstruction {
+#[derive(bincode::Encode, bincode::Decode, PartialEq, Debug)]
+pub enum Tokenitis {
     /// Starts the trade by creating and populating an escrow account and transferring ownership of the given temp token account to the PDA
     ///
     ///
@@ -23,7 +19,7 @@ pub enum EscrowInstruction {
     /// 3. `[writable]` The escrow account, it will hold all necessary info about the trade.
     /// 4. `[]` The rent sysvar
     /// 5. `[]` The token program
-    InitEscrow { amount: u64 },
+    Initialize(InitializeArgs),
     /// Accepts a trade
     ///
     ///
@@ -38,34 +34,5 @@ pub enum EscrowInstruction {
     /// 6. `[writable]` The escrow account holding the escrow info
     /// 7. `[]` The token program
     /// 8. `[]` The PDA account
-    Exchange {
-        /// the amount the taker expects to be paid in the other token, as a u64 because that's the max possible supply of a token
-        amount: u64,
-    },
-}
-
-impl EscrowInstruction {
-    /// Unpacks a byte buffer into a [EscrowInstruction](enum.EscrowInstruction.html).
-    pub fn decode_bytes(input: &[u8]) -> Result<Self, ProgramError> {
-        let (tag, rest) = input.split_first().ok_or(InvalidInstruction)?;
-
-        Ok(match tag {
-            0 => Self::InitEscrow {
-                amount: Self::unpack_amount(rest)?,
-            },
-            1 => Self::Exchange {
-                amount: Self::unpack_amount(rest)?,
-            },
-            _ => return Err(InvalidInstruction.into()),
-        })
-    }
-
-    fn unpack_amount(input: &[u8]) -> Result<u64, ProgramError> {
-        let amount = input
-            .get(..8)
-            .and_then(|slice| slice.try_into().ok())
-            .map(u64::from_le_bytes)
-            .ok_or(InvalidInstruction)?;
-        Ok(amount)
-    }
+    Execute(ExecuteArgs),
 }
