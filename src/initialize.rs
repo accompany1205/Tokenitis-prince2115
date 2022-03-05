@@ -16,8 +16,6 @@ pub struct Initialize<'a> {
     args: InitializeArgs,
 }
 
-// TODO should we use u64?
-
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 pub struct InitializeArgs {
     input_amounts: HashMap<Pubkey, u64>,
@@ -79,7 +77,7 @@ impl Instruction for Initialize<'_> {
                 Some(&pda),
                 AuthorityType::AccountOwner,
                 accounts.initializer.key,
-                &[&accounts.initializer.key],
+                &[accounts.initializer.key],
             )?;
 
             invoke(

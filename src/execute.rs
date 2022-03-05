@@ -97,11 +97,14 @@ impl Instruction for Execute<'_> {
         Ok(())
     }
 
+    // Transfer funds from caller's input token accounts to smart contract
+    // and retrieve funds from smart contract to caller's output token account
     fn execute(&mut self) -> ProgramResult {
         let accounts = &self.accounts;
         let program_state = State::try_from_slice(&accounts.state.data.borrow())?;
         let (pda, _nonce) = Pubkey::find_program_address(&[SEED], &self.program_id);
 
+        // Transfer funds from callers input token accounts to smart contract
         for i in 0..accounts.caller_inputs.len() {
             let caller_input = *accounts.caller_inputs.index(i);
 
@@ -140,6 +143,7 @@ impl Instruction for Execute<'_> {
             )?;
         }
 
+        // Transfer funds from smart contract to callers output token accounts
         for i in 0..accounts.caller_outputs.len() {
             let src: &AccountInfo;
             let amount: u64;

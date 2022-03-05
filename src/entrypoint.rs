@@ -6,7 +6,6 @@ use solana_program::{
     account_info::AccountInfo, entrypoint, entrypoint::ProgramResult, pubkey::Pubkey,
 };
 
-// TODO compilable
 // TODO upgrade dependencies
 // TODO client test
 // TODO create gui
