@@ -1,4 +1,4 @@
-extern crate bincode;
+extern crate borsh;
 extern crate solana_program;
 extern crate spl_token;
 

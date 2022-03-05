@@ -1,4 +1,5 @@
 use crate::{execute::ExecuteArgs, initialize::InitializeArgs};
+use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::entrypoint::ProgramResult;
 
 pub trait Instruction {
@@ -6,7 +7,7 @@ pub trait Instruction {
     fn execute(&mut self) -> ProgramResult;
 }
 
-#[derive(bincode::Encode, bincode::Decode, PartialEq, Debug)]
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 pub enum Tokenitis {
     /// Starts the trade by creating and populating an escrow account and transferring ownership of the given temp token account to the PDA
     ///

@@ -1,5 +1,5 @@
 use crate::{instruction::Instruction, state::State, state::SEED};
-use bincode::{Decode, Encode};
+use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
@@ -18,7 +18,7 @@ pub struct Initialize<'a> {
 
 // TODO should we use u64?
 
-#[derive(Encode, Decode, PartialEq, Debug)]
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 pub struct InitializeArgs {
     input_amounts: HashMap<Pubkey, u64>,
     output_amounts: HashMap<Pubkey, u64>,
@@ -31,12 +31,12 @@ struct InitializeAccounts<'a> {
     token_accounts: Vec<&'a AccountInfo<'a>>,
 }
 
-impl Initialize<'_> {
+impl<'a> Initialize<'a> {
     pub fn new(
         program_id: Pubkey,
-        accounts: &[AccountInfo],
+        accounts: &'a [AccountInfo<'a>],
         args: InitializeArgs,
-    ) -> Result<Box<dyn Instruction>, ProgramError> {
+    ) -> Result<Self, ProgramError> {
         let accounts = &mut accounts.iter();
 
         let token_program = next_account_info(accounts)?;
@@ -48,7 +48,7 @@ impl Initialize<'_> {
             token_accounts.push(next_account_info(accounts)?)
         }
 
-        Ok(Box::new(Initialize {
+        Ok(Initialize {
             program_id,
             accounts: InitializeAccounts {
                 token_program,
@@ -56,8 +56,8 @@ impl Initialize<'_> {
                 initializer,
                 token_accounts,
             },
-            args: args,
-        }))
+            args,
+        })
     }
 }
 
@@ -72,7 +72,7 @@ impl Instruction for Initialize<'_> {
         let accounts = &self.accounts;
         let (pda, _nonce) = Pubkey::find_program_address(&[SEED], &self.program_id);
 
-        for token_account in accounts.token_accounts {
+        for token_account in &accounts.token_accounts {
             let change_authority_ix = spl_token::instruction::set_authority(
                 accounts.token_program.key,
                 token_account.key,
@@ -85,27 +85,27 @@ impl Instruction for Initialize<'_> {
             invoke(
                 &change_authority_ix,
                 &[
-                    token_account.clone(),
+                    (*token_account).clone(),
                     accounts.initializer.clone(),
                     accounts.token_program.clone(),
                 ],
             )?;
         }
 
-        let state = accounts.state.deserialize_data::<State>()?;
+        let state = State::try_from_slice(&accounts.state.data.borrow())?;
         if state.initialized {
             return Err(ProgramError::AccountAlreadyInitialized);
         }
-
         let state = State {
             initialized: true,
             input_amount: self.args.input_amounts.clone(),
             output_amount: self.args.output_amounts.clone(),
         };
-        let x = accounts
+        accounts
             .state
-            .serialize_data(&state)
-            .map_err(Err(ProgramError::Custom(1)))?;
+            .data
+            .borrow_mut()
+            .copy_from_slice(&state.try_to_vec()?);
 
         Ok(())
     }

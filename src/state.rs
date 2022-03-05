@@ -1,10 +1,9 @@
-use bincode::{Decode, Encode};
+use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::pubkey::Pubkey;
 use std::collections::HashMap;
-
 pub const SEED: &[u8] = b"tokenitis";
 
-#[derive(Encode, Decode, PartialEq, Debug)]
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 pub struct State {
     pub initialized: bool,
     pub input_amount: HashMap<Pubkey, u64>,

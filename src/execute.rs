@@ -2,6 +2,7 @@ use crate::{
     instruction::Instruction,
     state::{State, SEED},
 };
+use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
@@ -9,6 +10,7 @@ use solana_program::{
     program_error::ProgramError,
     pubkey::Pubkey,
 };
+use std::ops::Index;
 
 pub struct Execute<'a> {
     program_id: Pubkey,
@@ -16,10 +18,12 @@ pub struct Execute<'a> {
     args: ExecuteArgs,
 }
 
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 pub struct ExecuteArgs {
     direction: Direction,
 }
 
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 pub enum Direction {
     Forward,
     Reverse,
@@ -36,12 +40,12 @@ struct ExecuteAccounts<'a> {
     outputs: Vec<&'a AccountInfo<'a>>,
 }
 
-impl Execute<'_> {
+impl<'a> Execute<'a> {
     pub fn new(
         program_id: Pubkey,
-        accounts: &[AccountInfo],
+        accounts: &'a [AccountInfo<'a>],
         instruction: ExecuteArgs,
-    ) -> Result<Box<dyn Instruction>, ProgramError> {
+    ) -> Result<Self, ProgramError> {
         let accounts = &mut accounts.iter();
 
         let token_program = next_account_info(accounts)?;
@@ -49,7 +53,7 @@ impl Execute<'_> {
         let pda = next_account_info(accounts)?;
         let caller = next_account_info(accounts)?;
 
-        let program_state = state.deserialize_data::<State>()?;
+        let program_state = State::try_from_slice(&state.data.borrow())?;
 
         let mut caller_inputs: Vec<&AccountInfo> = Vec::new();
         for _ in 0..program_state.input_amount.len() {
@@ -71,7 +75,7 @@ impl Execute<'_> {
             outputs.push(next_account_info(accounts)?)
         }
 
-        Ok(Box::new(Execute {
+        Ok(Execute {
             program_id,
             accounts: ExecuteAccounts {
                 token_program,
@@ -84,23 +88,25 @@ impl Execute<'_> {
                 outputs,
             },
             args: instruction,
-        }))
+        })
     }
 }
 
 impl Instruction for Execute<'_> {
-    fn validate(&self) -> ProgramResult {}
+    fn validate(&self) -> ProgramResult {
+        Ok(())
+    }
 
     fn execute(&mut self) -> ProgramResult {
         let accounts = &self.accounts;
-        let program_state = accounts.state.deserialize_data::<State>()?;
+        let program_state = State::try_from_slice(&accounts.state.data.borrow())?;
         let (pda, _nonce) = Pubkey::find_program_address(&[SEED], &self.program_id);
 
         for i in 0..accounts.caller_inputs.len() {
             let caller_input = *accounts.caller_inputs.index(i);
 
             let dst: &AccountInfo;
-            let mut amount: u64 = 0;
+            let amount: u64;
             if self.args.direction == Direction::Forward {
                 dst = *accounts.inputs.index(i);
                 amount = *program_state

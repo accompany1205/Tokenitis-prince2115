@@ -1,11 +1,10 @@
-use solana_program::{
-    account_info::AccountInfo, entrypoint, entrypoint::ProgramResult, pubkey::Pubkey,
-};
-
 use crate::{
     execute::Execute, initialize::Initialize, instruction::Instruction, instruction::Tokenitis,
 };
-use bincode::config::Configuration;
+use borsh::BorshDeserialize;
+use solana_program::{
+    account_info::AccountInfo, entrypoint, entrypoint::ProgramResult, pubkey::Pubkey,
+};
 
 // TODO compilable
 // TODO upgrade dependencies
@@ -14,21 +13,20 @@ use bincode::config::Configuration;
 // TODO add validation
 
 entrypoint!(process_instruction);
-fn process_instruction(
+fn process_instruction<'a>(
     program_id: &Pubkey,
-    accounts: &[AccountInfo],
+    accounts: &'a [AccountInfo<'a>],
     args: &[u8],
 ) -> ProgramResult {
-    let config = bincode::config::standard();
-    let args = bincode::decode_from_slice::<Tokenitis, Configuration>(args, config).map_err(Err(ProgramError::))?.0;
+    let args = Tokenitis::try_from_slice(args)?;
 
     let mut instruction: Box<dyn Instruction>;
     match args {
         Tokenitis::Initialize(args) => {
-            instruction = Initialize::new(*program_id, accounts, args)?;
+            instruction = Box::new(Initialize::new(*program_id, accounts, args)?);
         }
         Tokenitis::Execute(args) => {
-            instruction = Execute::new(*program_id, accounts, args)?;
+            instruction = Box::new(Execute::new(*program_id, accounts, args)?);
         }
     }
 
