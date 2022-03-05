@@ -1,11 +1,18 @@
 [package]
 name = "tokenitis"
 version = "0.1.0"
+edition = "2018"
 
 [dependencies]
-solana-program = "1.10.0"
-spl-token = {version = "3.3.0", features = ["no-entrypoint"]}
+solana-program = "1.9.2"
+spl-token = {version = "3.2.0", features = ["no-entrypoint"]}
 borsh = "0.9.3"
+
+[dev-dependencies]
+solana-client = "1.9.2"
+solana-sdk = "1.9.2"
+spl-token-client = "0.0.1"
+tokio = "1.17.0"
 
 [lib]
 crate-type = ["cdylib", "lib"]
