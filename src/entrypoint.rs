@@ -6,10 +6,10 @@ use solana_program::{
     account_info::AccountInfo, entrypoint, entrypoint::ProgramResult, pubkey::Pubkey,
 };
 
-// TODO upgrade dependencies
 // TODO client test
+// TODO remove hashmaps?
+// TODO add validation?
 // TODO create gui
-// TODO add validation
 
 entrypoint!(process_instruction);
 fn process_instruction<'a>(
