@@ -7,8 +7,6 @@ use solana_program::{
     account_info::AccountInfo, entrypoint, entrypoint::ProgramResult, pubkey::Pubkey,
 };
 
-// TODO client test
-// TODO tokens should be identified by mint
 // TODO add validation?
 // TODO create gui
 

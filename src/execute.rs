@@ -3,6 +3,7 @@ use crate::{
     state::{Tokenitis, SEED},
 };
 use borsh::{BorshDeserialize, BorshSerialize};
+use solana_program::program_pack::Pack;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
@@ -10,6 +11,7 @@ use solana_program::{
     program_error::ProgramError,
     pubkey::Pubkey,
 };
+use spl_token::state::Account;
 use std::ops::Index;
 
 pub struct Execute<'a> {
@@ -112,15 +114,17 @@ impl Instruction for Execute<'_> {
             let amount: u64;
             if self.args.direction == Direction::Forward {
                 dst = *accounts.inputs.index(i);
+                let mint = Account::unpack(&**dst.data.borrow())?.mint;
                 amount = *program_state
                     .input_amount
-                    .get(dst.key)
+                    .get(&mint)
                     .ok_or(ProgramError::InvalidArgument)?;
             } else {
                 dst = *accounts.outputs.index(i);
+                let mint = Account::unpack(&**dst.data.borrow())?.mint;
                 amount = *program_state
                     .output_amount
-                    .get(dst.key)
+                    .get(&mint)
                     .ok_or(ProgramError::InvalidArgument)?;
             }
 
@@ -149,15 +153,17 @@ impl Instruction for Execute<'_> {
             let amount: u64;
             if self.args.direction == Direction::Forward {
                 src = *accounts.outputs.index(i);
+                let mint = Account::unpack(&**src.data.borrow())?.mint;
                 amount = *program_state
                     .output_amount
-                    .get(src.key)
+                    .get(&mint)
                     .ok_or(ProgramError::InvalidArgument)?;
             } else {
                 src = *accounts.inputs.index(i);
+                let mint = Account::unpack(&**src.data.borrow())?.mint;
                 amount = *program_state
                     .input_amount
-                    .get(src.key)
+                    .get(&mint)
                     .ok_or(ProgramError::InvalidArgument)?;
             }
 

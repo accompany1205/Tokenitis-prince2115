@@ -3,24 +3,29 @@ extern crate solana_sdk;
 
 use borsh::BorshSerialize;
 use solana_client::rpc_client::RpcClient;
-use solana_program::instruction::{AccountMeta, Instruction};
-use solana_program::message::Message;
-use solana_program::native_token::LAMPORTS_PER_SOL;
-use solana_program::program_pack::Pack;
-use solana_program::pubkey::Pubkey;
-use solana_program::system_instruction;
-use solana_sdk::signature::{Keypair, Signature, Signer};
-use solana_sdk::transaction::Transaction;
-use spl_token::instruction::{initialize_account, initialize_mint, mint_to_checked};
-use spl_token::state::{Account, Mint};
-use std::collections::{BTreeMap, HashMap};
-use std::sync::Arc;
-use std::thread::sleep;
-use std::time::Duration;
-use tokenitis::execute::{Direction, ExecuteArgs};
-use tokenitis::initialize::InitializeArgs;
-use tokenitis::instruction::TokenitisInstructions;
-use tokenitis::state::{Tokenitis, SEED};
+use solana_program::{
+    instruction::{AccountMeta, Instruction},
+    message::Message,
+    native_token::LAMPORTS_PER_SOL,
+    program_pack::Pack,
+    pubkey::Pubkey,
+    system_instruction,
+};
+use solana_sdk::{
+    signature::{Keypair, Signature, Signer},
+    transaction::Transaction,
+};
+use spl_token::{
+    instruction::{initialize_account, initialize_mint, mint_to_checked},
+    state::{Account, Mint},
+};
+use std::{collections::BTreeMap, thread::sleep, time::Duration};
+use tokenitis::{
+    execute::{Direction, ExecuteArgs},
+    initialize::InitializeArgs,
+    instruction::TokenitisInstructions,
+    state::{Tokenitis, SEED},
+};
 
 #[test]
 fn basic() -> Result<(), Box<dyn std::error::Error>> {
@@ -211,11 +216,11 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize tokenitis
     let program_state = Keypair::new();
     let mut input_amounts = BTreeMap::new();
-    input_amounts.insert(input_token_1_sc_account.pubkey(), 10);
-    input_amounts.insert(input_token_2_sc_account.pubkey(), 10);
+    input_amounts.insert(input_token_1_mint.pubkey(), 10);
+    input_amounts.insert(input_token_2_mint.pubkey(), 10);
     let mut output_amounts = BTreeMap::new();
-    output_amounts.insert(output_token_1_sc_account.pubkey(), 10);
-    output_amounts.insert(output_token_2_sc_account.pubkey(), 10);
+    output_amounts.insert(output_token_1_mint.pubkey(), 10);
+    output_amounts.insert(output_token_2_mint.pubkey(), 10);
     let sig = initialize_tokenitis(
         &client,
         &program_state,
