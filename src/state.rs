@@ -1,11 +1,11 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::pubkey::Pubkey;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 pub const SEED: &[u8] = b"tokenitis";
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
-pub struct State {
+pub struct Tokenitis {
     pub initialized: bool,
-    pub input_amount: HashMap<Pubkey, u64>,
-    pub output_amount: HashMap<Pubkey, u64>,
+    pub input_amount: BTreeMap<Pubkey, u64>,
+    pub output_amount: BTreeMap<Pubkey, u64>,
 }

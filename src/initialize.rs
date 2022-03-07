@@ -1,14 +1,15 @@
-use crate::{instruction::Instruction, state::State, state::SEED};
+use crate::{instruction::Instruction, state::Tokenitis, state::SEED};
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
+    msg,
     program::invoke,
     program_error::ProgramError,
     pubkey::Pubkey,
 };
 use spl_token::instruction::AuthorityType;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 pub struct Initialize<'a> {
     program_id: Pubkey,
@@ -18,8 +19,8 @@ pub struct Initialize<'a> {
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 pub struct InitializeArgs {
-    input_amounts: HashMap<Pubkey, u64>,
-    output_amounts: HashMap<Pubkey, u64>,
+    pub input_amounts: BTreeMap<Pubkey, u64>,
+    pub output_amounts: BTreeMap<Pubkey, u64>,
 }
 
 struct InitializeAccounts<'a> {
@@ -90,20 +91,18 @@ impl Instruction for Initialize<'_> {
             )?;
         }
 
-        let state = State::try_from_slice(&accounts.state.data.borrow())?;
+        let state = Tokenitis::deserialize(&mut &**accounts.state.data.borrow())?;
         if state.initialized {
             return Err(ProgramError::AccountAlreadyInitialized);
         }
-        let state = State {
+        let state = Tokenitis {
             initialized: true,
             input_amount: self.args.input_amounts.clone(),
             output_amount: self.args.output_amounts.clone(),
         };
-        accounts
-            .state
-            .data
-            .borrow_mut()
-            .copy_from_slice(&state.try_to_vec()?);
+        msg!("attempting to write state to account");
+        state.serialize(&mut &mut accounts.state.data.borrow_mut()[..])?;
+        msg!("successfully wrote state to account");
 
         Ok(())
     }

@@ -8,7 +8,7 @@ pub trait Instruction {
 }
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
-pub enum Tokenitis {
+pub enum TokenitisInstructions {
     /// Starts the trade by creating and populating an escrow account and transferring ownership of the given temp token account to the PDA
     ///
     ///

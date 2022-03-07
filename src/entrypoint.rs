@@ -1,5 +1,6 @@
 use crate::{
-    execute::Execute, initialize::Initialize, instruction::Instruction, instruction::Tokenitis,
+    execute::Execute, initialize::Initialize, instruction::Instruction,
+    instruction::TokenitisInstructions,
 };
 use borsh::BorshDeserialize;
 use solana_program::{
@@ -7,7 +8,7 @@ use solana_program::{
 };
 
 // TODO client test
-// TODO remove hashmaps?
+// TODO tokens should be identified by mint
 // TODO add validation?
 // TODO create gui
 
@@ -17,14 +18,14 @@ fn process_instruction<'a>(
     accounts: &'a [AccountInfo<'a>],
     args: &[u8],
 ) -> ProgramResult {
-    let args = Tokenitis::try_from_slice(args)?;
+    let args = TokenitisInstructions::try_from_slice(args)?;
 
     let mut instruction: Box<dyn Instruction>;
     match args {
-        Tokenitis::Initialize(args) => {
+        TokenitisInstructions::Initialize(args) => {
             instruction = Box::new(Initialize::new(*program_id, accounts, args)?);
         }
-        Tokenitis::Execute(args) => {
+        TokenitisInstructions::Execute(args) => {
             instruction = Box::new(Execute::new(*program_id, accounts, args)?);
         }
     }

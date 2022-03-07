@@ -1,6 +1,6 @@
 use crate::{
     instruction::Instruction,
-    state::{State, SEED},
+    state::{Tokenitis, SEED},
 };
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
@@ -20,7 +20,7 @@ pub struct Execute<'a> {
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 pub struct ExecuteArgs {
-    direction: Direction,
+    pub direction: Direction,
 }
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
@@ -53,7 +53,7 @@ impl<'a> Execute<'a> {
         let pda = next_account_info(accounts)?;
         let caller = next_account_info(accounts)?;
 
-        let program_state = State::try_from_slice(&state.data.borrow())?;
+        let program_state = Tokenitis::deserialize(&mut &**state.data.borrow())?;
 
         let mut caller_inputs: Vec<&AccountInfo> = Vec::new();
         for _ in 0..program_state.input_amount.len() {
@@ -101,8 +101,8 @@ impl Instruction for Execute<'_> {
     // and retrieve funds from smart contract to caller's output token account
     fn execute(&mut self) -> ProgramResult {
         let accounts = &self.accounts;
-        let program_state = State::try_from_slice(&accounts.state.data.borrow())?;
-        let (pda, _nonce) = Pubkey::find_program_address(&[SEED], &self.program_id);
+        let program_state = Tokenitis::deserialize(&mut &**accounts.state.data.borrow())?;
+        let (pda, nonce) = Pubkey::find_program_address(&[SEED], &self.program_id);
 
         // Transfer funds from callers input token accounts to smart contract
         for i in 0..accounts.caller_inputs.len() {
@@ -179,7 +179,7 @@ impl Instruction for Execute<'_> {
                     accounts.pda.clone(),
                     accounts.token_program.clone(),
                 ],
-                &[&[SEED]],
+                &[&[&SEED[..], &[nonce]]],
             )?;
         }
 
