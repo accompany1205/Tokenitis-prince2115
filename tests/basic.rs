@@ -43,206 +43,275 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     // Create mints
+    let mut instructions: Vec<Instruction> = Vec::new();
     let input_token_decimals: u8 = 9;
     let input_token_1_mint = Keypair::new();
-    let sig1 = create_token_mint(&client, &user, &input_token_1_mint, input_token_decimals)?;
+    create_token_mint(&client, &user, &input_token_1_mint, input_token_decimals)?
+        .iter()
+        .for_each(|i| {
+            instructions.push(i.clone());
+        });
     println!(
         "created input token 1 mint, with pubkey - {}",
         input_token_1_mint.pubkey()
     );
     let input_token_2_mint = Keypair::new();
-    let sig2 = create_token_mint(&client, &user, &input_token_2_mint, input_token_decimals)?;
+    create_token_mint(&client, &user, &input_token_2_mint, input_token_decimals)?
+        .iter()
+        .for_each(|i| {
+            instructions.push(i.clone());
+        });
     println!(
         "created input token 2 mint, with pubkey - {}",
         input_token_2_mint.pubkey()
     );
     let output_token_decimal: u8 = 9;
     let output_token_1_mint = Keypair::new();
-    let sig3 = create_token_mint(&client, &user, &output_token_1_mint, output_token_decimal)?;
+    create_token_mint(&client, &user, &output_token_1_mint, output_token_decimal)?
+        .iter()
+        .for_each(|i| {
+            instructions.push(i.clone());
+        });
     println!(
         "created output token 1 mint, with pubkey - {}",
         output_token_1_mint.pubkey()
     );
     let output_token_2_mint = Keypair::new();
-    let sig4 = create_token_mint(&client, &user, &output_token_2_mint, output_token_decimal)?;
+    create_token_mint(&client, &user, &output_token_2_mint, output_token_decimal)?
+        .iter()
+        .for_each(|i| {
+            instructions.push(i.clone());
+        });
     println!(
         "created output token 2 mint, with pubkey - {}",
         output_token_2_mint.pubkey()
     );
 
-    confirm_transactions(&client, vec![sig1, sig2, sig3, sig4])?;
+    let sig = create_and_send_tx(
+        &client,
+        instructions,
+        vec![
+            &user,
+            &input_token_1_mint,
+            &input_token_2_mint,
+            &output_token_1_mint,
+            &output_token_2_mint,
+        ],
+        Some(&user.pubkey()),
+    )?;
+    confirm_transactions(&client, vec![sig])?;
 
+    let mut instructions: Vec<Instruction> = Vec::new();
     // Create token accounts
     let input_token_1_user_account = Keypair::new();
-    let sig1 = create_token_account(
+    create_token_account(
         &client,
         &user,
         &input_token_1_mint,
         &input_token_1_user_account,
-    )?;
+    )?
+    .iter()
+    .for_each(|i| {
+        instructions.push(i.clone());
+    });
     let input_token_2_user_account = Keypair::new();
-    let sig2 = create_token_account(
+    create_token_account(
         &client,
         &user,
         &input_token_2_mint,
         &input_token_2_user_account,
-    )?;
+    )?
+    .iter()
+    .for_each(|i| {
+        instructions.push(i.clone());
+    });
     let input_token_1_sc_account = Keypair::new();
-    let sig3 = create_token_account(
+    create_token_account(
         &client,
         &user,
         &input_token_1_mint,
         &input_token_1_sc_account,
-    )?;
+    )?
+    .iter()
+    .for_each(|i| {
+        instructions.push(i.clone());
+    });
     println!(
         "created input token 1 sc account, with pubkey - {}",
         input_token_1_sc_account.pubkey(),
     );
 
     let input_token_2_sc_account = Keypair::new();
-    let sig4 = create_token_account(
+    create_token_account(
         &client,
         &user,
         &input_token_2_mint,
         &input_token_2_sc_account,
-    )?;
+    )?
+    .iter()
+    .for_each(|i| {
+        instructions.push(i.clone());
+    });
     println!(
         "created input token 2 sc account, with pubkey - {}",
         input_token_2_sc_account.pubkey(),
     );
+
+    let sig1 = create_and_send_tx(
+        &client,
+        instructions,
+        vec![
+            &user,
+            &input_token_1_user_account,
+            &input_token_2_user_account,
+            &input_token_1_sc_account,
+            &input_token_2_sc_account,
+        ],
+        Some(&user.pubkey()),
+    )?;
+
+    let mut instructions: Vec<Instruction> = Vec::new();
     let output_token_1_sc_account = Keypair::new();
-    let sig5 = create_token_account(
+    create_token_account(
         &client,
         &user,
         &output_token_1_mint,
         &output_token_1_sc_account,
-    )?;
+    )?
+    .iter()
+    .for_each(|i| {
+        instructions.push(i.clone());
+    });
     let output_token_2_sc_account = Keypair::new();
-    let sig6 = create_token_account(
+    create_token_account(
         &client,
         &user,
         &output_token_2_mint,
         &output_token_2_sc_account,
-    )?;
+    )?
+    .iter()
+    .for_each(|i| {
+        instructions.push(i.clone());
+    });
     let output_token_1_user_account = Keypair::new();
-    let sig7 = create_token_account(
+    create_token_account(
         &client,
         &user,
         &output_token_1_mint,
         &output_token_1_user_account,
-    )?;
+    )?
+    .iter()
+    .for_each(|i| {
+        instructions.push(i.clone());
+    });
     println!(
         "created output token 1 user account, with pubkey - {}",
         output_token_1_user_account.pubkey(),
     );
 
     let output_token_2_user_account = Keypair::new();
-    let sig8 = create_token_account(
+    create_token_account(
         &client,
         &user,
         &output_token_2_mint,
         &output_token_2_user_account,
-    )?;
+    )?
+    .iter()
+    .for_each(|i| {
+        instructions.push(i.clone());
+    });
     println!(
         "created output token 2 user account, with pubkey - {}",
         output_token_2_user_account.pubkey(),
     );
 
-    confirm_transactions(
+    let sig2 = create_and_send_tx(
         &client,
-        vec![sig1, sig2, sig3, sig4, sig5, sig6, sig7, sig8],
+        instructions,
+        vec![
+            &user,
+            &output_token_1_user_account,
+            &output_token_2_user_account,
+            &output_token_1_sc_account,
+            &output_token_2_sc_account,
+        ],
+        Some(&user.pubkey()),
     )?;
+    confirm_transactions(&client, vec![sig1, sig2])?;
 
+    let mut instructions: Vec<Instruction> = Vec::new();
     // Mint appropriate accounts
-    let sig1 = mint_to_token_account(
-        &client,
+    mint_to_token_account(
         &user,
         &input_token_1_mint,
         &input_token_1_user_account,
         100,
         input_token_decimals,
-    )?;
-    let balance = client.get_token_account_balance(&input_token_1_user_account.pubkey())?;
-    println!(
-        "created input token 1 user account, with pubkey - {}, with balance - {}",
-        input_token_1_user_account.pubkey(),
-        balance.amount
-    );
-    let sig2 = mint_to_token_account(
-        &client,
+    )?
+    .iter()
+    .for_each(|i| {
+        instructions.push(i.clone());
+    });
+    // let balance = client.get_token_account_balance(&input_token_1_user_account.pubkey())?;
+    // println!(
+    //     "created input token 1 user account, with pubkey - {}, with balance - {}",
+    //     input_token_1_user_account.pubkey(),
+    //     balance.amount
+    // );
+    mint_to_token_account(
         &user,
         &input_token_2_mint,
         &input_token_2_user_account,
         100,
         input_token_decimals,
-    )?;
-    let balance = client.get_token_account_balance(&input_token_2_user_account.pubkey())?;
-    println!(
-        "created input token 2 user account, with pubkey - {}, with balance - {}",
-        input_token_2_user_account.pubkey(),
-        balance.amount
-    );
-    let sig3 = mint_to_token_account(
-        &client,
+    )?
+    .iter()
+    .for_each(|i| {
+        instructions.push(i.clone());
+    });
+    // let balance = client.get_token_account_balance(&input_token_2_user_account.pubkey())?;
+    // println!(
+    //     "created input token 2 user account, with pubkey - {}, with balance - {}",
+    //     input_token_2_user_account.pubkey(),
+    //     balance.amount
+    // );
+    mint_to_token_account(
         &user,
         &output_token_1_mint,
         &output_token_1_sc_account,
         100,
         output_token_decimal,
-    )?;
-    let balance = client.get_token_account_balance(&output_token_1_sc_account.pubkey())?;
-    println!(
-        "created output token 1 sc account, with pubkey - {}, with balance - {}",
-        output_token_1_sc_account.pubkey(),
-        balance.amount
-    );
-    let sig4 = mint_to_token_account(
-        &client,
+    )?
+    .iter()
+    .for_each(|i| {
+        instructions.push(i.clone());
+    });
+    // let balance = client.get_token_account_balance(&output_token_1_sc_account.pubkey())?;
+    // println!(
+    //     "created output token 1 sc account, with pubkey - {}, with balance - {}",
+    //     output_token_1_sc_account.pubkey(),
+    //     balance.amount
+    // );
+    mint_to_token_account(
         &user,
         &output_token_2_mint,
         &output_token_2_sc_account,
         100,
         output_token_decimal,
-    )?;
-    let balance = client.get_token_account_balance(&output_token_2_sc_account.pubkey())?;
-    println!(
-        "created output token 2 sc account, with pubkey - {}, with balance - {}",
-        output_token_2_sc_account.pubkey(),
-        balance.amount
-    );
+    )?
+    .iter()
+    .for_each(|i| {
+        instructions.push(i.clone());
+    });
+    // let balance = client.get_token_account_balance(&output_token_2_sc_account.pubkey())?;
+    // println!(
+    //     "created output token 2 sc account, with pubkey - {}, with balance - {}",
+    //     output_token_2_sc_account.pubkey(),
+    //     balance.amount
+    // );
 
-    confirm_transactions(&client, vec![sig1, sig2, sig3, sig4])?;
-
-    // Initialize tokenitis
-    let program_state = Keypair::new();
-    let mut input_amounts = BTreeMap::new();
-    input_amounts.insert(input_token_1_mint.pubkey(), 10);
-    input_amounts.insert(input_token_2_mint.pubkey(), 10);
-    let mut output_amounts = BTreeMap::new();
-    output_amounts.insert(output_token_1_mint.pubkey(), 10);
-    output_amounts.insert(output_token_2_mint.pubkey(), 10);
-    let sig = initialize_tokenitis(
-        &client,
-        &program_state,
-        &user,
-        vec![
-            &input_token_1_sc_account,
-            &input_token_2_sc_account,
-            &output_token_1_sc_account,
-            &output_token_2_sc_account,
-        ],
-        InitializeArgs {
-            input_amounts,
-            output_amounts,
-        },
-    )?;
-
+    let sig = create_and_send_tx(&client, instructions, vec![&user], Some(&user.pubkey()))?;
     confirm_transactions(&client, vec![sig])?;
-
-    println!(
-        "initialized tokenitis, with state key - {}",
-        program_state.pubkey()
-    );
 
     assert_eq!(
         100,
@@ -300,6 +369,37 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
             .get_token_account_balance(&output_token_2_sc_account.pubkey())?
             .amount
             .parse::<u64>()?
+    );
+
+    // Initialize tokenitis
+    let program_state = Keypair::new();
+    let mut input_amounts = BTreeMap::new();
+    input_amounts.insert(input_token_1_mint.pubkey(), 10);
+    input_amounts.insert(input_token_2_mint.pubkey(), 10);
+    let mut output_amounts = BTreeMap::new();
+    output_amounts.insert(output_token_1_mint.pubkey(), 10);
+    output_amounts.insert(output_token_2_mint.pubkey(), 10);
+    let sig = initialize_tokenitis(
+        &client,
+        &program_state,
+        &user,
+        vec![
+            &input_token_1_sc_account,
+            &input_token_2_sc_account,
+            &output_token_1_sc_account,
+            &output_token_2_sc_account,
+        ],
+        InitializeArgs {
+            input_amounts,
+            output_amounts,
+        },
+    )?;
+
+    confirm_transactions(&client, vec![sig])?;
+
+    println!(
+        "initialized tokenitis, with state key - {}",
+        program_state.pubkey()
     );
 
     // Execute tokenitis
@@ -468,13 +568,12 @@ fn execute_tokenitis(
 }
 
 fn mint_to_token_account(
-    client: &RpcClient,
     mint_authority: &Keypair,
     mint_account: &Keypair,
     token_account: &Keypair,
     amount: u64,
     decimals: u8,
-) -> Result<Signature, Box<dyn std::error::Error>> {
+) -> Result<Vec<Instruction>, Box<dyn std::error::Error>> {
     let instructions = vec![mint_to_checked(
         &spl_token::ID,
         &mint_account.pubkey(),
@@ -484,15 +583,8 @@ fn mint_to_token_account(
         amount,
         decimals,
     )?];
-    let signers: Vec<&dyn Signer> = vec![mint_authority];
-    let sig = create_and_send_tx(
-        &client,
-        instructions,
-        signers,
-        Some(&mint_authority.pubkey()),
-    )?;
 
-    Ok(sig)
+    Ok(instructions)
 }
 
 fn create_token_account(
@@ -500,7 +592,7 @@ fn create_token_account(
     owner: &Keypair,
     mint_account: &Keypair,
     token_account: &Keypair,
-) -> Result<Signature, Box<dyn std::error::Error>> {
+) -> Result<Vec<Instruction>, Box<dyn std::error::Error>> {
     let minimum_balance_for_rent_exemption =
         client.get_minimum_balance_for_rent_exemption(Account::LEN)?;
 
@@ -519,10 +611,8 @@ fn create_token_account(
             &owner.pubkey(),
         )?,
     ];
-    let signers: Vec<&dyn Signer> = vec![owner, token_account];
-    let sig = create_and_send_tx(&client, instructions, signers, Some(&owner.pubkey()))?;
 
-    Ok(sig)
+    Ok(instructions)
 }
 
 fn create_token_mint(
@@ -530,11 +620,11 @@ fn create_token_mint(
     mint_authority: &Keypair,
     mint_account: &Keypair,
     decimals: u8,
-) -> Result<Signature, Box<dyn std::error::Error>> {
+) -> Result<Vec<Instruction>, Box<dyn std::error::Error>> {
     let minimum_balance_for_rent_exemption =
         client.get_minimum_balance_for_rent_exemption(Mint::LEN)?;
 
-    let instructions = vec![
+    Ok(vec![
         system_instruction::create_account(
             &mint_authority.pubkey(),
             &mint_account.pubkey(),
@@ -549,16 +639,7 @@ fn create_token_mint(
             None,
             decimals,
         )?,
-    ];
-    let signers: Vec<&dyn Signer> = vec![mint_authority, mint_account];
-    let sig = create_and_send_tx(
-        &client,
-        instructions,
-        signers,
-        Some(&mint_authority.pubkey()),
-    )?;
-
-    Ok(sig)
+    ])
 }
 
 fn create_and_send_tx(

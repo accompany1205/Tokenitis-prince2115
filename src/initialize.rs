@@ -100,9 +100,7 @@ impl Instruction for Initialize<'_> {
             input_amount: self.args.input_amounts.clone(),
             output_amount: self.args.output_amounts.clone(),
         };
-        msg!("attempting to write state to account");
         state.serialize(&mut &mut accounts.state.data.borrow_mut()[..])?;
-        msg!("successfully wrote state to account");
 
         Ok(())
     }
