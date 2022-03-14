@@ -1,9 +1,9 @@
-use crate::{instruction::Instruction, state::Tokenitis, state::SEED};
+use crate::state::Token;
+use crate::{instruction::TokenitisInstructions, state::Tokenitis, state::SEED};
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
-    msg,
     program::invoke,
     program_error::ProgramError,
     pubkey::Pubkey,
@@ -17,10 +17,10 @@ pub struct Initialize<'a> {
     args: InitializeArgs,
 }
 
-#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
+#[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 pub struct InitializeArgs {
-    pub input_amounts: BTreeMap<Pubkey, u64>,
-    pub output_amounts: BTreeMap<Pubkey, u64>,
+    pub inputs: BTreeMap<Pubkey, Token>,
+    pub outputs: BTreeMap<Pubkey, Token>,
 }
 
 struct InitializeAccounts<'a> {
@@ -43,7 +43,7 @@ impl<'a> Initialize<'a> {
         let initializer = next_account_info(accounts)?;
 
         let mut token_accounts: Vec<&AccountInfo> = Vec::new();
-        for _ in 0..(args.input_amounts.len() + args.output_amounts.len()) {
+        for _ in 0..(args.inputs.len() + args.outputs.len()) {
             token_accounts.push(next_account_info(accounts)?)
         }
 
@@ -60,7 +60,7 @@ impl<'a> Initialize<'a> {
     }
 }
 
-impl Instruction for Initialize<'_> {
+impl TokenitisInstructions for Initialize<'_> {
     fn validate(&self) -> ProgramResult {
         Ok(())
     }
@@ -97,8 +97,8 @@ impl Instruction for Initialize<'_> {
         }
         let state = Tokenitis {
             initialized: true,
-            input_amount: self.args.input_amounts.clone(),
-            output_amount: self.args.output_amounts.clone(),
+            inputs: self.args.inputs.clone(),
+            outputs: self.args.outputs.clone(),
         };
         state.serialize(&mut &mut accounts.state.data.borrow_mut()[..])?;
 
