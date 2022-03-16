@@ -1,4 +1,4 @@
-use crate::state::Token;
+use crate::state::{Token, TransformMetadata};
 use crate::{instruction::TokenitisInstructions, state::Tokenitis, state::SEED};
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
@@ -19,6 +19,7 @@ pub struct Initialize<'a> {
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 pub struct InitializeArgs {
+    pub metadata: TransformMetadata,
     pub inputs: BTreeMap<Pubkey, Token>,
     pub outputs: BTreeMap<Pubkey, Token>,
 }
@@ -97,6 +98,7 @@ impl TokenitisInstructions for Initialize<'_> {
         }
         let state = Tokenitis {
             initialized: true,
+            metadata: self.args.metadata.clone(),
             inputs: self.args.inputs.clone(),
             outputs: self.args.outputs.clone(),
         };
