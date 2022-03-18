@@ -1,7 +1,9 @@
 extern crate solana_program;
 extern crate solana_sdk;
 use borsh::BorshDeserialize;
+use solana_client::nonce_utils::state_from_account;
 use solana_client::rpc_client::RpcClient;
+use solana_program::system_instruction::SystemInstruction;
 use solana_program::{
     instruction::Instruction, message::Message, native_token::LAMPORTS_PER_SOL, program_pack::Pack,
     pubkey::Pubkey,
@@ -16,11 +18,11 @@ use spl_token::{
     state::{Account, Mint},
 };
 use std::{collections::BTreeMap, thread::sleep, time::Duration};
-use tokenitis::state::{program_state_len, Token};
+use tokenitis::state::{program_state_len, Token, TransformMetadata};
 use tokenitis::{
     execute::{Direction, ExecuteArgs},
     initialize::InitializeArgs,
-    instruction::Instructions,
+    instruction::InstructionType,
     state::Tokenitis,
 };
 
@@ -45,10 +47,10 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
     let input_mint1 = Keypair::new();
     let input_mint2 = Keypair::new();
     let mint_rent = client.get_minimum_balance_for_rent_exemption(Mint::LEN)?;
-    Instructions::create_spl_token_mint(&input_mint1.pubkey(), user, None, 0, mint_rent)?
+    InstructionType::create_spl_token_mint(&input_mint1.pubkey(), user, None, 0, mint_rent)?
         .iter()
         .for_each(|i| instructions.push(i.clone()));
-    Instructions::create_spl_token_mint(&input_mint2.pubkey(), user, None, 0, mint_rent)?
+    InstructionType::create_spl_token_mint(&input_mint2.pubkey(), user, None, 0, mint_rent)?
         .iter()
         .for_each(|i| instructions.push(i.clone()));
     let sig = create_and_send_tx(
@@ -72,6 +74,7 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
     let input2_program_account = Keypair::new();
     let output1_program_account = Keypair::new();
     let output2_program_account = Keypair::new();
+
     let mut inputs: BTreeMap<Pubkey, Token> = BTreeMap::new();
     let mut outputs: BTreeMap<Pubkey, Token> = BTreeMap::new();
     let mut output_supply: BTreeMap<Pubkey, u64> = BTreeMap::new();
@@ -105,7 +108,14 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
     );
     output_supply.insert(output_mint1.pubkey(), 100);
     output_supply.insert(output_mint2.pubkey(), 100);
-    let args = InitializeArgs { inputs, outputs };
+    let args = InitializeArgs {
+        metadata: TransformMetadata {
+            name: "test123".to_string(),
+            image: "".to_string(),
+        },
+        inputs,
+        outputs,
+    };
     let spl_token_rent =
         client.get_minimum_balance_for_rent_exemption(spl_token::state::Account::LEN)?;
     let spl_mint_rent =
@@ -113,8 +123,11 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
     let tokenitis_rent =
         client.get_minimum_balance_for_rent_exemption(program_state_len(args.clone())?)?;
 
-    let instructions =
-        Instructions::create_program_input_accounts(user, spl_token_rent.clone(), args.clone())?;
+    let instructions = InstructionType::create_transform_input_accounts(
+        user,
+        spl_token_rent.clone(),
+        args.clone(),
+    )?;
     let sig1 = create_and_send_tx(
         &client,
         instructions,
@@ -126,7 +139,7 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
         Some(user),
     )?;
 
-    let instructions = Instructions::create_program_output_accounts(
+    let instructions = InstructionType::create_trarnsform_output_accounts(
         user,
         spl_token_rent,
         spl_mint_rent,
@@ -148,7 +161,7 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
     confirm_transactions(&client, vec![sig1, sig2])?;
     println!("created program accounts");
 
-    let instructions = tokenitis::instruction::Instructions::initialize_tokenitis(
+    let instructions = tokenitis::instruction::InstructionType::initialize_tokenitis(
         user,
         &transform.pubkey(),
         tokenitis_rent,
@@ -180,7 +193,7 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
     user_outputs.insert(output_mint2.pubkey(), output2_user_account.pubkey());
     let account_rent = client.get_minimum_balance_for_rent_exemption(Account::LEN)?;
     for (mint, user_account) in user_inputs.iter() {
-        Instructions::create_spl_token_account(mint, user_account, user, account_rent)?
+        InstructionType::create_spl_token_account(mint, user_account, user, account_rent)?
             .iter()
             .for_each(|i| instructions.push(i.clone()));
         instructions.push(mint_to_checked(
@@ -194,7 +207,7 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
         )?)
     }
     for (mint, user_account) in user_outputs.iter() {
-        Instructions::create_spl_token_account(mint, user_account, user, account_rent)?
+        InstructionType::create_spl_token_account(mint, user_account, user, account_rent)?
             .iter()
             .for_each(|i| instructions.push(i.clone()));
     }
@@ -280,7 +293,7 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
         user_inputs: user_inputs.clone(),
         user_outputs: user_outputs.clone(),
     };
-    let instructions = Instructions::execute_tokenitis(
+    let instructions = InstructionType::execute_tokenitis(
         user,
         &transform.pubkey(),
         transform_state.clone(),
@@ -357,8 +370,12 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
         user_inputs,
         user_outputs,
     };
-    let instructions =
-        Instructions::execute_tokenitis(user, &transform.pubkey(), transform_state, args.clone())?;
+    let instructions = InstructionType::execute_tokenitis(
+        user,
+        &transform.pubkey(),
+        transform_state,
+        args.clone(),
+    )?;
     let sig = create_and_send_tx(&client, instructions, vec![&user_keypair], Some(user))?;
     confirm_transactions(&client, vec![sig])?;
 

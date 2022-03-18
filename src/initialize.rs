@@ -1,5 +1,5 @@
 use crate::state::{Token, TransformMetadata};
-use crate::{instruction::TokenitisInstructions, state::Tokenitis, state::SEED};
+use crate::{instruction::Instruction, state::Tokenitis, state::SEED};
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -61,7 +61,7 @@ impl<'a> Initialize<'a> {
     }
 }
 
-impl TokenitisInstructions for Initialize<'_> {
+impl TokenitisInstruction for Initialize<'_> {
     fn validate(&self) -> ProgramResult {
         Ok(())
     }

@@ -1,6 +1,7 @@
+use crate::instruction::TokenitisInstruction;
 use crate::{
-    execute::Execute, initialize::Initialize, instruction::Instructions,
-    instruction::TokenitisInstructions,
+    execute::Execute, initialize::Initialize, instruction::Instruction,
+    instruction::InstructionType,
 };
 use borsh::BorshDeserialize;
 use solana_program::{
@@ -9,7 +10,6 @@ use solana_program::{
 
 // TODO refactor
 // TODO add validation?
-// TODO create gui
 // TODO add infinite mint
 // TODO rename to transform
 // TODO make state into pda and remove redundant execute arg
@@ -20,14 +20,14 @@ fn process_instruction<'a>(
     accounts: &'a [AccountInfo<'a>],
     args: &[u8],
 ) -> ProgramResult {
-    let args = Instructions::try_from_slice(args)?;
+    let instruction_type = InstructionType::try_from_slice(args)?;
 
-    let mut instruction: Box<dyn TokenitisInstructions>;
-    match args {
-        Instructions::Initialize(args) => {
+    let mut instruction: Box<dyn TokenitisInstruction>;
+    match instruction_type {
+        InstructionType::CreateTransform(args) => {
             instruction = Box::new(Initialize::new(*program_id, accounts, args)?);
         }
-        Instructions::Execute(args) => {
+        InstructionType::ExecuteTransform(args) => {
             instruction = Box::new(Execute::new(*program_id, accounts, args)?);
         }
     }

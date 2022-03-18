@@ -11,7 +11,7 @@ use spl_token::instruction::{initialize_account, initialize_mint, mint_to_checke
 use spl_token::state::{Account, Mint};
 use std::collections::BTreeMap;
 
-pub trait TokenitisInstructions {
+pub trait TokenitisInstruction {
     fn validate(&self) -> ProgramResult;
     fn execute(&mut self) -> ProgramResult;
 }
@@ -19,13 +19,13 @@ pub trait TokenitisInstructions {
 // Rename to create and execute transform
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq, Debug)]
-pub enum Instructions {
-    Initialize(InitializeArgs),
-    Execute(ExecuteArgs),
+pub enum InstructionType {
+    CreateTransform(InitializeArgs),
+    ExecuteTransform(ExecuteArgs),
 }
 
-impl Instructions {
-    pub fn create_program_input_accounts(
+impl InstructionType {
+    pub fn create_transform_input_accounts(
         initializer: &Pubkey,
         spl_token_rent: u64,
         args: InitializeArgs,
@@ -46,7 +46,7 @@ impl Instructions {
         Ok(instructions)
     }
 
-    pub fn create_program_output_accounts(
+    pub fn create_trarnsform_output_accounts(
         initializer: &Pubkey,
         spl_token_rent: u64,
         spl_mint_rent: u64,
@@ -124,7 +124,7 @@ impl Instructions {
             Instruction {
                 program_id: crate::id(),
                 accounts,
-                data: Self::Initialize(args).try_to_vec()?,
+                data: Self::CreateTransform(args).try_to_vec()?,
             },
         ];
         initialize_tokenitis
@@ -194,7 +194,7 @@ impl Instructions {
         let instructions = vec![Instruction {
             program_id: crate::id(),
             accounts,
-            data: Self::Execute(args).try_to_vec()?,
+            data: Self::ExecuteTransform(args).try_to_vec()?,
         }];
 
         Ok(instructions)

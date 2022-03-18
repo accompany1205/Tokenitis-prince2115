@@ -1,5 +1,5 @@
 use crate::{
-    instruction::TokenitisInstructions,
+    instruction::Instruction,
     state::{Tokenitis, SEED},
 };
 use borsh::{BorshDeserialize, BorshSerialize};
@@ -97,7 +97,7 @@ impl<'a> Execute<'a> {
     }
 }
 
-impl TokenitisInstructions for Execute<'_> {
+impl TokenitisInstruction for Execute<'_> {
     fn validate(&self) -> ProgramResult {
         Ok(())
     }
