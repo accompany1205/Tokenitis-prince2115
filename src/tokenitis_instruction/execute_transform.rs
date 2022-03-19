@@ -1,5 +1,5 @@
-use crate::instruction::TokenitisInstruction;
-use crate::state::{Tokenitis, SEED};
+use crate::state::{Transform, SEED};
+use crate::tokenitis_instruction::TokenitisInstruction;
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::program_pack::Pack;
 use solana_program::{
@@ -13,14 +13,14 @@ use spl_token::state::Account;
 use std::collections::BTreeMap;
 use std::ops::Index;
 
-pub struct Execute<'a> {
+pub struct ExecuteTransform<'a> {
     program_id: Pubkey,
-    accounts: ExecuteAccounts<'a>,
-    args: ExecuteArgs,
+    accounts: ExecuteTransformAccounts<'a>,
+    args: ExecuteTransformArgs,
 }
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq, Debug)]
-pub struct ExecuteArgs {
+pub struct ExecuteTransformArgs {
     pub direction: Direction,
     pub user_inputs: BTreeMap<Pubkey, Pubkey>,
     pub user_outputs: BTreeMap<Pubkey, Pubkey>,
@@ -32,7 +32,7 @@ pub enum Direction {
     Reverse,
 }
 
-struct ExecuteAccounts<'a> {
+struct ExecuteTransformAccounts<'a> {
     token_program: &'a AccountInfo<'a>,
     state: &'a AccountInfo<'a>,
     pda: &'a AccountInfo<'a>,
@@ -43,11 +43,11 @@ struct ExecuteAccounts<'a> {
     outputs: Vec<&'a AccountInfo<'a>>,
 }
 
-impl<'a> Execute<'a> {
+impl<'a> ExecuteTransform<'a> {
     pub fn new(
         program_id: Pubkey,
         accounts: &'a [AccountInfo<'a>],
-        args: ExecuteArgs,
+        args: ExecuteTransformArgs,
     ) -> Result<Self, ProgramError> {
         let accounts = &mut accounts.iter();
 
@@ -56,7 +56,7 @@ impl<'a> Execute<'a> {
         let pda = next_account_info(accounts)?;
         let caller = next_account_info(accounts)?;
 
-        let program_state = Tokenitis::deserialize(&mut &**state.data.borrow())?;
+        let program_state = Transform::deserialize(&mut &**state.data.borrow())?;
 
         let mut caller_inputs: Vec<&AccountInfo> = Vec::new();
         for _ in 0..program_state.inputs.len() {
@@ -78,9 +78,9 @@ impl<'a> Execute<'a> {
             outputs.push(next_account_info(accounts)?)
         }
 
-        Ok(Execute {
+        Ok(ExecuteTransform {
             program_id,
-            accounts: ExecuteAccounts {
+            accounts: ExecuteTransformAccounts {
                 token_program,
                 state,
                 pda,
@@ -95,7 +95,7 @@ impl<'a> Execute<'a> {
     }
 }
 
-impl TokenitisInstruction for Execute<'_> {
+impl TokenitisInstruction for ExecuteTransform<'_> {
     fn validate(&self) -> ProgramResult {
         Ok(())
     }
@@ -104,7 +104,7 @@ impl TokenitisInstruction for Execute<'_> {
     // and retrieve funds from smart contract to caller's output token account
     fn execute(&mut self) -> ProgramResult {
         let accounts = &self.accounts;
-        let program_state = Tokenitis::deserialize(&mut &**accounts.state.data.borrow())?;
+        let program_state = Transform::deserialize(&mut &**accounts.state.data.borrow())?;
         let (pda, nonce) = Pubkey::find_program_address(&[SEED], &self.program_id);
 
         let mut transfer_params: Vec<(&AccountInfo, &AccountInfo, &AccountInfo, u64)> = Vec::new();

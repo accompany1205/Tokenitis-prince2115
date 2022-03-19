@@ -1,6 +1,6 @@
-use crate::instruction::TokenitisInstruction;
 use crate::state::{Token, TransformMetadata};
-use crate::{state::Tokenitis, state::SEED};
+use crate::tokenitis_instruction::TokenitisInstruction;
+use crate::{state::Transform, state::SEED};
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -12,31 +12,32 @@ use solana_program::{
 use spl_token::instruction::AuthorityType;
 use std::collections::BTreeMap;
 
-pub struct Initialize<'a> {
+pub struct CreateTransform<'a> {
     program_id: Pubkey,
-    accounts: InitializeAccounts<'a>,
-    args: InitializeArgs,
+    accounts: CreateTransformAccounts<'a>,
+    args: CreateTransformArgs,
 }
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq, Debug)]
-pub struct InitializeArgs {
+pub struct CreateTransformArgs {
     pub metadata: TransformMetadata,
     pub inputs: BTreeMap<Pubkey, Token>,
     pub outputs: BTreeMap<Pubkey, Token>,
 }
 
-struct InitializeAccounts<'a> {
+// deserialize accounts instead of storing as account info
+struct CreateTransformAccounts<'a> {
     token_program: &'a AccountInfo<'a>,
     state: &'a AccountInfo<'a>,
     initializer: &'a AccountInfo<'a>,
     token_accounts: Vec<&'a AccountInfo<'a>>,
 }
 
-impl<'a> Initialize<'a> {
+impl<'a> CreateTransform<'a> {
     pub fn new(
         program_id: Pubkey,
         accounts: &'a [AccountInfo<'a>],
-        args: InitializeArgs,
+        args: CreateTransformArgs,
     ) -> Result<Self, ProgramError> {
         let accounts = &mut accounts.iter();
 
@@ -49,9 +50,9 @@ impl<'a> Initialize<'a> {
             token_accounts.push(next_account_info(accounts)?)
         }
 
-        Ok(Initialize {
+        Ok(CreateTransform {
             program_id,
-            accounts: InitializeAccounts {
+            accounts: CreateTransformAccounts {
                 token_program,
                 state,
                 initializer,
@@ -62,7 +63,7 @@ impl<'a> Initialize<'a> {
     }
 }
 
-impl TokenitisInstruction for Initialize<'_> {
+impl TokenitisInstruction for CreateTransform<'_> {
     fn validate(&self) -> ProgramResult {
         Ok(())
     }
@@ -93,11 +94,11 @@ impl TokenitisInstruction for Initialize<'_> {
             )?;
         }
 
-        let state = Tokenitis::deserialize(&mut &**accounts.state.data.borrow())?;
+        let state = Transform::deserialize(&mut &**accounts.state.data.borrow())?;
         if state.initialized {
             return Err(ProgramError::AccountAlreadyInitialized);
         }
-        let state = Tokenitis {
+        let state = Transform {
             initialized: true,
             metadata: self.args.metadata.clone(),
             inputs: self.args.inputs.clone(),

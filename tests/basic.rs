@@ -20,10 +20,10 @@ use spl_token::{
 use std::{collections::BTreeMap, thread::sleep, time::Duration};
 use tokenitis::state::{program_state_len, Token, TransformMetadata};
 use tokenitis::{
-    execute::{Direction, ExecuteArgs},
-    initialize::InitializeArgs,
-    instruction::InstructionType,
-    state::Tokenitis,
+    create_transform::CreateTransformArgs,
+    execute_transform::{Direction, ExecuteArgs},
+    state::Transform,
+    tokenitis_instruction::TokenitisInstructionType,
 };
 
 #[test]
@@ -47,12 +47,24 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
     let input_mint1 = Keypair::new();
     let input_mint2 = Keypair::new();
     let mint_rent = client.get_minimum_balance_for_rent_exemption(Mint::LEN)?;
-    InstructionType::create_spl_token_mint(&input_mint1.pubkey(), user, None, 0, mint_rent)?
-        .iter()
-        .for_each(|i| instructions.push(i.clone()));
-    InstructionType::create_spl_token_mint(&input_mint2.pubkey(), user, None, 0, mint_rent)?
-        .iter()
-        .for_each(|i| instructions.push(i.clone()));
+    TokenitisInstructionType::create_spl_token_mint(
+        &input_mint1.pubkey(),
+        user,
+        None,
+        0,
+        mint_rent,
+    )?
+    .iter()
+    .for_each(|i| instructions.push(i.clone()));
+    TokenitisInstructionType::create_spl_token_mint(
+        &input_mint2.pubkey(),
+        user,
+        None,
+        0,
+        mint_rent,
+    )?
+    .iter()
+    .for_each(|i| instructions.push(i.clone()));
     let sig = create_and_send_tx(
         &client,
         instructions,
@@ -108,7 +120,7 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
     );
     output_supply.insert(output_mint1.pubkey(), 100);
     output_supply.insert(output_mint2.pubkey(), 100);
-    let args = InitializeArgs {
+    let args = CreateTransformArgs {
         metadata: TransformMetadata {
             name: "test123".to_string(),
             image: "".to_string(),
@@ -123,7 +135,7 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
     let tokenitis_rent =
         client.get_minimum_balance_for_rent_exemption(program_state_len(args.clone())?)?;
 
-    let instructions = InstructionType::create_transform_input_accounts(
+    let instructions = TokenitisInstructionType::create_transform_input_accounts(
         user,
         spl_token_rent,
         args.clone(),
@@ -139,7 +151,7 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
         Some(user),
     )?;
 
-    let instructions = InstructionType::create_trarnsform_output_accounts(
+    let instructions = TokenitisInstructionType::create_trarnsform_output_accounts(
         user,
         spl_token_rent,
         spl_mint_rent,
@@ -161,12 +173,13 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
     confirm_transactions(&client, vec![sig1, sig2])?;
     println!("created program accounts");
 
-    let instructions = tokenitis::instruction::InstructionType::initialize_tokenitis(
-        user,
-        &transform.pubkey(),
-        tokenitis_rent,
-        args.clone(),
-    )?;
+    let instructions =
+        tokenitis::tokenitis_instruction::TokenitisInstructionType::initialize_tokenitis(
+            user,
+            &transform.pubkey(),
+            tokenitis_rent,
+            args.clone(),
+        )?;
     let sig = create_and_send_tx(
         &client,
         instructions,
@@ -177,7 +190,7 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
     println!("initialized tokenitis - args - {:?}\n", args);
 
     let transform_account = client.get_account(&transform.pubkey())?;
-    let transform_state = Tokenitis::try_from_slice(transform_account.data())?;
+    let transform_state = Transform::try_from_slice(transform_account.data())?;
 
     // Create user token accounts
     let mut instructions: Vec<Instruction> = Vec::new();
@@ -193,7 +206,7 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
     user_outputs.insert(output_mint2.pubkey(), output2_user_account.pubkey());
     let account_rent = client.get_minimum_balance_for_rent_exemption(Account::LEN)?;
     for (mint, user_account) in user_inputs.iter() {
-        InstructionType::create_spl_token_account(mint, user_account, user, account_rent)?
+        TokenitisInstructionType::create_spl_token_account(mint, user_account, user, account_rent)?
             .iter()
             .for_each(|i| instructions.push(i.clone()));
         instructions.push(mint_to_checked(
@@ -207,7 +220,7 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
         )?)
     }
     for (mint, user_account) in user_outputs.iter() {
-        InstructionType::create_spl_token_account(mint, user_account, user, account_rent)?
+        TokenitisInstructionType::create_spl_token_account(mint, user_account, user, account_rent)?
             .iter()
             .for_each(|i| instructions.push(i.clone()));
     }
@@ -293,7 +306,7 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
         user_inputs: user_inputs.clone(),
         user_outputs: user_outputs.clone(),
     };
-    let instructions = InstructionType::execute_tokenitis(
+    let instructions = TokenitisInstructionType::execute_tokenitis(
         user,
         &transform.pubkey(),
         transform_state.clone(),
@@ -370,7 +383,7 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
         user_inputs,
         user_outputs,
     };
-    let instructions = InstructionType::execute_tokenitis(
+    let instructions = TokenitisInstructionType::execute_tokenitis(
         user,
         &transform.pubkey(),
         transform_state,
