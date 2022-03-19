@@ -1,6 +1,6 @@
 extern crate solana_program;
 extern crate solana_sdk;
-use borsh::{BorshDeserialize, BorshSerialize};
+use borsh::{BorshDeserialize};
 
 use solana_client::rpc_client::RpcClient;
 
@@ -20,7 +20,7 @@ use spl_token::{
 use std::{collections::BTreeMap, thread::sleep, time::Duration};
 use tokenitis::sdk::InstructionBuilder;
 use tokenitis::state::{Token, TransformMetadata};
-use tokenitis::state::{Tokenitis, Transform};
+use tokenitis::state::{Transform};
 use tokenitis::tokenitis_instruction::create_transform::CreateTransformArgs;
 use tokenitis::tokenitis_instruction::execute_transform::{Direction, ExecuteTransformArgs};
 
