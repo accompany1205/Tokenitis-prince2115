@@ -1,6 +1,4 @@
 // TODO add validation?
 // TODO add infinite mint
-// TODO make state into pda and remove redundant execute arg -- add pagination as well
 // TODO add proper program errors
 // TODO move util into seperate create since its not part of the sc
-// TODO rename current util module to sdk and make it a seperate crate - use util module for smart contract helper functions

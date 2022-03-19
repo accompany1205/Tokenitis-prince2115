@@ -1,6 +1,6 @@
 extern crate solana_program;
 extern crate solana_sdk;
-use borsh::BorshDeserialize;
+use borsh::{BorshDeserialize, BorshSerialize};
 
 use solana_client::rpc_client::RpcClient;
 
@@ -18,11 +18,11 @@ use spl_token::{
     state::{Account, Mint},
 };
 use std::{collections::BTreeMap, thread::sleep, time::Duration};
-use tokenitis::state::Transform;
+use tokenitis::sdk::InstructionBuilder;
 use tokenitis::state::{Token, TransformMetadata};
+use tokenitis::state::{Tokenitis, Transform};
 use tokenitis::tokenitis_instruction::create_transform::CreateTransformArgs;
 use tokenitis::tokenitis_instruction::execute_transform::{Direction, ExecuteTransformArgs};
-use tokenitis::util::InstructionBuilder;
 
 #[test]
 fn basic() -> Result<(), Box<dyn std::error::Error>> {
@@ -65,7 +65,6 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     // Initialize tokenitis
-    let transform = Keypair::new();
     let output_mint1 = Keypair::new();
     let output_mint2 = Keypair::new();
     let input1_program_account = Keypair::new();
@@ -118,8 +117,6 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
         client.get_minimum_balance_for_rent_exemption(spl_token::state::Account::LEN)?;
     let spl_mint_rent =
         client.get_minimum_balance_for_rent_exemption(spl_token::state::Mint::LEN)?;
-    let tokenitis_rent =
-        client.get_minimum_balance_for_rent_exemption(Transform::transform_len(args.clone())?)?;
 
     let instructions =
         InstructionBuilder::create_transform_input_accounts(user, spl_token_rent, args.clone())?;
@@ -156,22 +153,15 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
     confirm_transactions(&client, vec![sig1, sig2])?;
     println!("created program accounts");
 
-    let instructions = InstructionBuilder::create_transform(
-        user,
-        &transform.pubkey(),
-        tokenitis_rent,
-        args.clone(),
-    )?;
-    let sig = create_and_send_tx(
-        &client,
-        instructions,
-        vec![&user_keypair, &transform],
-        Some(user),
-    )?;
+    let instructions =
+        InstructionBuilder::create_transform(tokenitis::id(), user, 1, args.clone())?;
+    let sig = create_and_send_tx(&client, instructions, vec![&user_keypair], Some(user))?;
     confirm_transactions(&client, vec![sig])?;
     println!("initialized tokenitis - args - {:?}\n", args);
 
-    let transform_account = client.get_account(&transform.pubkey())?;
+    let (transform_pub, _) =
+        tokenitis::state::Tokenitis::find_transform_address(&tokenitis::id(), 1);
+    let transform_account = client.get_account(&transform_pub)?;
     let transform_state = Transform::try_from_slice(transform_account.data())?;
 
     // Create user token accounts
@@ -289,8 +279,9 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
         user_outputs: user_outputs.clone(),
     };
     let instructions = InstructionBuilder::execute_transform(
+        tokenitis::id(),
         user,
-        &transform.pubkey(),
+        &transform_pub,
         transform_state.clone(),
         args.clone(),
     )?;
@@ -366,8 +357,9 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
         user_outputs,
     };
     let instructions = InstructionBuilder::execute_transform(
+        tokenitis::id(),
         user,
-        &transform.pubkey(),
+        &transform_pub,
         transform_state,
         args.clone(),
     )?;

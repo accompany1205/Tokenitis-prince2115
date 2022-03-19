@@ -1,10 +1,16 @@
 use crate::state::Transform;
 use crate::state::{Token, Tokenitis, TransformMetadata};
 use crate::tokenitis_instruction::TokenitisInstruction;
+use crate::util::create_pda;
 use borsh::{BorshDeserialize, BorshSerialize};
+use solana_program::program::invoke_signed;
+use solana_program::rent::Rent;
+use solana_program::system_instruction::create_account;
+use solana_program::sysvar::Sysvar;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
+    msg,
     program::invoke,
     program_error::ProgramError,
     pubkey::Pubkey,
@@ -27,6 +33,7 @@ pub struct CreateTransformArgs {
 
 // deserialize accounts instead of storing as account info
 struct CreateTransformAccounts<'a> {
+    system_program: &'a AccountInfo<'a>,
     token_program: &'a AccountInfo<'a>,
     tokenitis: &'a AccountInfo<'a>,
     transform: &'a AccountInfo<'a>,
@@ -42,6 +49,7 @@ impl<'a> CreateTransform<'a> {
     ) -> Result<Self, ProgramError> {
         let accounts = &mut accounts.iter();
 
+        let system_program = next_account_info(accounts)?;
         let token_program = next_account_info(accounts)?;
         let tokenitis = next_account_info(accounts)?;
         let transform = next_account_info(accounts)?;
@@ -55,6 +63,7 @@ impl<'a> CreateTransform<'a> {
         Ok(CreateTransform {
             program_id,
             accounts: CreateTransformAccounts {
+                system_program,
                 token_program,
                 tokenitis,
                 transform,
@@ -76,18 +85,44 @@ impl TokenitisInstruction for CreateTransform<'_> {
     fn execute(&mut self) -> ProgramResult {
         let accounts = &self.accounts;
 
+        msg!("123");
         let mut tokenitis = Tokenitis::deserialize(&mut &**accounts.tokenitis.data.borrow())?;
+        msg!("123");
+        if tokenitis.num_transforms == 0 {
+            let space = Tokenitis {
+                num_transforms: u64::MAX,
+            }
+            .try_to_vec()?
+            .len();
+            create_pda(
+                &self.program_id,
+                space,
+                accounts.creator,
+                accounts.tokenitis,
+                accounts.system_program,
+                Tokenitis::tokenitis_seed().as_slice(),
+            )?;
+        }
         tokenitis.num_transforms += 1;
-        tokenitis.serialize(&mut &mut accounts.transform.data.borrow_mut()[..])?;
 
-        let (transform_addr, _nonce) =
-            Tokenitis::find_transform_address(&self.program_id, tokenitis.num_transforms);
+        msg!("123");
+        tokenitis.serialize(&mut &mut accounts.transform.data.borrow_mut()[..])?;
+        msg!("123");
+
+        create_pda(
+            &self.program_id,
+            Transform::transform_len(self.args.clone())?,
+            accounts.creator,
+            accounts.transform,
+            accounts.system_program,
+            Tokenitis::transform_seed(tokenitis.num_transforms).as_slice(),
+        )?;
 
         for token_account in &accounts.token_accounts {
             let change_authority_ix = spl_token::instruction::set_authority(
                 accounts.token_program.key,
                 token_account.key,
-                Some(&transform_addr),
+                Some(accounts.tokenitis.key),
                 AuthorityType::AccountOwner,
                 accounts.creator.key,
                 &[accounts.creator.key],
@@ -102,11 +137,7 @@ impl TokenitisInstruction for CreateTransform<'_> {
             )?;
         }
 
-        let mut transform = Transform::deserialize(&mut &**accounts.transform.data.borrow())?;
-        if transform.initialized {
-            return Err(ProgramError::AccountAlreadyInitialized);
-        }
-        transform = Transform {
+        let transform = Transform {
             initialized: true,
             metadata: self.args.metadata.clone(),
             inputs: self.args.inputs.clone(),

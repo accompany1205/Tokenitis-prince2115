@@ -1,4 +1,4 @@
-use crate::state::{Tokenitis, Transform, TOKENITIS_PDA};
+use crate::state::{Tokenitis, Transform};
 use crate::tokenitis_instruction::TokenitisInstruction;
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::program_pack::Pack;
@@ -171,7 +171,7 @@ impl TokenitisInstruction for ExecuteTransform<'_> {
                         authority.clone(),
                         accounts.token_program.clone(),
                     ],
-                    &[&[TOKENITIS_PDA, &[nonce]]],
+                    &[&[Tokenitis::tokenitis_seed().as_slice(), &[nonce]]],
                 )?;
             }
         }
