@@ -31,7 +31,7 @@ pub fn program_state_len(args: InitializeArgs) -> Result<usize> {
         initialized: true,
         metadata: args.metadata.clone(),
         inputs: args.inputs.clone(),
-        outputs: args.outputs.clone(),
+        outputs: args.outputs,
     }
     .try_to_vec()?
     .len())

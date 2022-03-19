@@ -1,5 +1,6 @@
+use crate::instruction::TokenitisInstruction;
 use crate::state::{Token, TransformMetadata};
-use crate::{instruction::Instruction, state::Tokenitis, state::SEED};
+use crate::{state::Tokenitis, state::SEED};
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},

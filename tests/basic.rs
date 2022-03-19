@@ -1,9 +1,9 @@
 extern crate solana_program;
 extern crate solana_sdk;
 use borsh::BorshDeserialize;
-use solana_client::nonce_utils::state_from_account;
+
 use solana_client::rpc_client::RpcClient;
-use solana_program::system_instruction::SystemInstruction;
+
 use solana_program::{
     instruction::Instruction, message::Message, native_token::LAMPORTS_PER_SOL, program_pack::Pack,
     pubkey::Pubkey,
@@ -125,7 +125,7 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
 
     let instructions = InstructionType::create_transform_input_accounts(
         user,
-        spl_token_rent.clone(),
+        spl_token_rent,
         args.clone(),
     )?;
     let sig1 = create_and_send_tx(
@@ -304,7 +304,7 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
 
     println!(
         "successfully executed tokenitis forward, args - {:?}\n",
-        args.clone(),
+        args,
     );
 
     assert_eq!(
@@ -381,7 +381,7 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
 
     println!(
         "successfully executed tokenitis reverse, args - {:?}\n",
-        args.clone(),
+        args,
     );
 
     assert_eq!(

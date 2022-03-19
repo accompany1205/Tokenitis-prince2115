@@ -1,7 +1,5 @@
-use crate::{
-    instruction::Instruction,
-    state::{Tokenitis, SEED},
-};
+use crate::instruction::TokenitisInstruction;
+use crate::state::{Tokenitis, SEED};
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::program_pack::Pack;
 use solana_program::{
@@ -138,9 +136,7 @@ impl TokenitisInstruction for Execute<'_> {
 
         for (mut src, mut dst, mut authority, amount) in transfer_params {
             if self.args.direction == Direction::Reverse {
-                let buf = src;
-                src = dst;
-                dst = buf;
+                std::mem::swap(&mut src, &mut dst);
                 if authority.key.eq(&pda) {
                     authority = accounts.caller;
                 } else {
@@ -175,7 +171,7 @@ impl TokenitisInstruction for Execute<'_> {
                         authority.clone(),
                         accounts.token_program.clone(),
                     ],
-                    &[&[&SEED[..], &[nonce]]],
+                    &[&[SEED, &[nonce]]],
                 )?;
             }
         }

@@ -35,7 +35,7 @@ impl InstructionType {
             let program_input_account = &tok.account;
             Self::create_spl_token_account(
                 mint,
-                &program_input_account,
+                program_input_account,
                 initializer,
                 spl_token_rent,
             )?
@@ -73,10 +73,9 @@ impl InstructionType {
                 program_output_account,
                 initializer,
                 &[initializer],
-                output_supply
+                *output_supply
                     .get(mint)
-                    .ok_or(format!("could not get supply for mint - {}", mint.clone()))?
-                    .clone(),
+                    .ok_or(format!("could not get supply for mint - {}", mint.clone()))?,
                 0,
             )?;
             let make_fixed_supply = spl_token::instruction::set_authority(
@@ -103,20 +102,20 @@ impl InstructionType {
         let mut instructions: Vec<Instruction> = Vec::new();
         let mut accounts = vec![
             AccountMeta::new_readonly(spl_token::ID, false),
-            AccountMeta::new(transform.clone(), false),
-            AccountMeta::new_readonly(initializer.clone(), true),
+            AccountMeta::new(*transform, false),
+            AccountMeta::new_readonly(*initializer, true),
         ];
         args.inputs
             .iter()
-            .for_each(|(_, tok)| accounts.push(AccountMeta::new(tok.account.clone(), false)));
+            .for_each(|(_, tok)| accounts.push(AccountMeta::new(tok.account, false)));
         args.outputs
             .iter()
-            .for_each(|(_, tok)| accounts.push(AccountMeta::new(tok.account.clone(), false)));
+            .for_each(|(_, tok)| accounts.push(AccountMeta::new(tok.account, false)));
         let space = program_state_len(args.clone())?;
         let initialize_tokenitis = vec![
             system_instruction::create_account(
                 initializer,
-                &transform,
+                transform,
                 tokenitis_rent,
                 space as u64,
                 &crate::id(),
@@ -143,22 +142,19 @@ impl InstructionType {
         let (pda, _nonce) = Pubkey::find_program_address(&[SEED], &crate::ID);
         let mut accounts = vec![
             AccountMeta::new_readonly(spl_token::ID, false),
-            AccountMeta::new_readonly(transform.clone(), false),
+            AccountMeta::new_readonly(*transform, false),
             AccountMeta::new_readonly(pda, false),
-            AccountMeta::new_readonly(caller.clone(), true),
+            AccountMeta::new_readonly(*caller, true),
         ];
 
         let mut caller_inputs: Vec<AccountMeta> = Vec::new();
         let mut program_inputs: Vec<AccountMeta> = Vec::new();
         for (mint, tok) in transform_state.inputs.iter() {
             caller_inputs.push(AccountMeta::new(
-                args.user_inputs
-                    .get(mint)
-                    .ok_or(format!(
-                        "could not find caller token account for mint - {}",
-                        mint.clone()
-                    ))?
-                    .clone(),
+                *args.user_inputs.get(mint).ok_or(format!(
+                    "could not find caller token account for mint - {}",
+                    mint.clone()
+                ))?,
                 false,
             ));
             program_inputs.push(AccountMeta::new(tok.account, false))
@@ -168,13 +164,10 @@ impl InstructionType {
         let mut program_outputs: Vec<AccountMeta> = Vec::new();
         for (mint, tok) in transform_state.outputs.iter() {
             caller_outputs.push(AccountMeta::new(
-                args.user_outputs
-                    .get(mint)
-                    .ok_or(format!(
-                        "could not find caller token account for mint - {}",
-                        mint.clone()
-                    ))?
-                    .clone(),
+                *args.user_outputs.get(mint).ok_or(format!(
+                    "could not find caller token account for mint - {}",
+                    mint.clone()
+                ))?,
                 false,
             ));
             program_outputs.push(AccountMeta::new(tok.account, false))
@@ -233,13 +226,13 @@ impl InstructionType {
     ) -> Result<Vec<Instruction>> {
         let instructions = vec![
             system_instruction::create_account(
-                &authority,
-                &token_account,
+                authority,
+                token_account,
                 rent,
                 Account::LEN as u64,
                 &spl_token::ID,
             ),
-            initialize_account(&spl_token::ID, &token_account, &mint, &authority)?,
+            initialize_account(&spl_token::ID, token_account, mint, authority)?,
         ];
         Ok(instructions)
     }
