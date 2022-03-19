@@ -14,6 +14,7 @@ use solana_program::{
 };
 use spl_token::instruction::AuthorityType;
 use std::collections::BTreeMap;
+use std::mem;
 
 pub struct CreateTransform<'a> {
     program_id: Pubkey,
@@ -83,13 +84,9 @@ impl TokenitisInstruction for CreateTransform<'_> {
     fn execute(&mut self) -> ProgramResult {
         let accounts = &self.accounts;
 
-        msg!(format!("123").as_str());
-        msg!(format!("{:?}", accounts.tokenitis).as_str());
-        msg!(format!("{:?}", accounts.creator).as_str());
         let mut tokenitis = if accounts.tokenitis.data.borrow().len() > 0 {
             Tokenitis::deserialize(&mut &**accounts.tokenitis.data.borrow())?
         } else {
-            msg!(format!("123").as_str());
             let space = Tokenitis {
                 num_transforms: u64::MAX,
             }
@@ -106,19 +103,7 @@ impl TokenitisInstruction for CreateTransform<'_> {
             Tokenitis { num_transforms: 0 }
         };
         tokenitis.num_transforms += 1;
-
-        msg!("123");
-        tokenitis.serialize(&mut &mut accounts.transform.data.borrow_mut()[..])?;
-        msg!("123");
-
-        create_pda(
-            &self.program_id,
-            Transform::transform_len(self.args.clone())?,
-            accounts.creator,
-            accounts.transform,
-            accounts.system_program,
-            Tokenitis::transform_seed(tokenitis.num_transforms).as_slice(),
-        )?;
+        tokenitis.serialize(&mut &mut accounts.tokenitis.data.borrow_mut()[..])?;
 
         for token_account in &accounts.token_accounts {
             let change_authority_ix = spl_token::instruction::set_authority(
@@ -145,6 +130,14 @@ impl TokenitisInstruction for CreateTransform<'_> {
             inputs: self.args.inputs.clone(),
             outputs: self.args.outputs.clone(),
         };
+        create_pda(
+            &self.program_id,
+            transform.try_to_vec()?.len(),
+            accounts.creator,
+            accounts.transform,
+            accounts.system_program,
+            Tokenitis::transform_seed(tokenitis.num_transforms).as_slice(),
+        )?;
         transform.serialize(&mut &mut accounts.transform.data.borrow_mut()[..])?;
 
         Ok(())

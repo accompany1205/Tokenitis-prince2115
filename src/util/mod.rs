@@ -12,9 +12,7 @@ pub fn create_pda<'a>(
     system_program: &AccountInfo<'a>,
     seed: &[u8],
 ) -> ProgramResult {
-    let rent = solana_program::sysvar::rent::Rent::get()?
-        .minimum_balance(space)
-        .max(1);
+    let rent = solana_program::sysvar::rent::Rent::get()?.minimum_balance(space);
 
     let ix = solana_program::system_instruction::create_account(
         creator.key,
@@ -25,5 +23,9 @@ pub fn create_pda<'a>(
     );
 
     let (_, nonce) = Pubkey::find_program_address(&[seed], program_id);
-    invoke_signed(&ix, &[creator.clone(), pda.clone()], &[&[seed, &[nonce]]])
+    invoke_signed(
+        &ix,
+        &[creator.clone(), pda.clone(), system_program.clone()],
+        &[&[seed, &[nonce]]],
+    )
 }
