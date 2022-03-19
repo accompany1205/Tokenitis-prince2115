@@ -4,9 +4,6 @@ use crate::tokenitis_instruction::TokenitisInstruction;
 use crate::util::create_pda;
 use borsh::{BorshDeserialize, BorshSerialize};
 
-
-
-
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
@@ -32,6 +29,7 @@ pub struct CreateTransformArgs {
 }
 
 // deserialize accounts instead of storing as account info
+#[derive(Debug)]
 struct CreateTransformAccounts<'a> {
     system_program: &'a AccountInfo<'a>,
     token_program: &'a AccountInfo<'a>,
@@ -85,10 +83,13 @@ impl TokenitisInstruction for CreateTransform<'_> {
     fn execute(&mut self) -> ProgramResult {
         let accounts = &self.accounts;
 
-        msg!("123");
-        let mut tokenitis = Tokenitis::deserialize(&mut &**accounts.tokenitis.data.borrow())?;
-        msg!("123");
-        if tokenitis.num_transforms == 0 {
+        msg!(format!("123").as_str());
+        msg!(format!("{:?}", accounts.tokenitis).as_str());
+        msg!(format!("{:?}", accounts.creator).as_str());
+        let mut tokenitis = if accounts.tokenitis.data.borrow().len() > 0 {
+            Tokenitis::deserialize(&mut &**accounts.tokenitis.data.borrow())?
+        } else {
+            msg!(format!("123").as_str());
             let space = Tokenitis {
                 num_transforms: u64::MAX,
             }
@@ -102,7 +103,8 @@ impl TokenitisInstruction for CreateTransform<'_> {
                 accounts.system_program,
                 Tokenitis::tokenitis_seed().as_slice(),
             )?;
-        }
+            Tokenitis { num_transforms: 0 }
+        };
         tokenitis.num_transforms += 1;
 
         msg!("123");

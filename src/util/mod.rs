@@ -25,9 +25,5 @@ pub fn create_pda<'a>(
     );
 
     let (_, nonce) = Pubkey::find_program_address(&[seed], program_id);
-    invoke_signed(
-        &ix,
-        &[creator.clone(), pda.clone(), system_program.clone()],
-        &[&[seed, &[nonce]]],
-    )
+    invoke_signed(&ix, &[creator.clone(), pda.clone()], &[&[seed, &[nonce]]])
 }

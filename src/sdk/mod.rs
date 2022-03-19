@@ -1,4 +1,4 @@
-use crate::state::{Tokenitis};
+use crate::state::Tokenitis;
 use crate::tokenitis_instruction::create_transform::CreateTransformArgs;
 use crate::tokenitis_instruction::execute_transform::ExecuteTransformArgs;
 use crate::tokenitis_instruction::TokenitisInstructionType;
@@ -98,7 +98,7 @@ impl InstructionBuilder {
             AccountMeta::new_readonly(spl_token::ID, false),
             AccountMeta::new(tokenitis, false),
             AccountMeta::new(transform, false),
-            AccountMeta::new_readonly(*creator, true),
+            AccountMeta::new(*creator, true),
         ];
         args.inputs
             .iter()
