@@ -19,15 +19,14 @@ fn process_instruction<'a>(
 ) -> ProgramResult {
     let instruction_type = InstructionType::try_from_slice(args)?;
 
-    let mut instruction: Box<dyn TokenitisInstruction>;
-    match instruction_type {
+    let mut instruction: Box<dyn TokenitisInstruction> = match instruction_type {
         InstructionType::CreateTransform(args) => {
-            instruction = Box::new(Initialize::new(*program_id, accounts, args)?);
+            Box::new(Initialize::new(*program_id, accounts, args)?)
         }
         InstructionType::ExecuteTransform(args) => {
-            instruction = Box::new(Execute::new(*program_id, accounts, args)?);
+            Box::new(Execute::new(*program_id, accounts, args)?)
         }
-    }
+    };
 
     instruction.validate()?;
     instruction.execute()
