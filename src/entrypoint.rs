@@ -7,13 +7,6 @@ use solana_program::{
     account_info::AccountInfo, entrypoint, entrypoint::ProgramResult, pubkey::Pubkey,
 };
 
-// TODO refactor
-// TODO add validation?
-// TODO add infinite mint
-// TODO rename to transform
-// TODO make state into pda and remove redundant execute arg
-// TODO move util into seperate create since its not part of the sc
-
 entrypoint!(process_instruction);
 fn process_instruction<'a>(
     program_id: &Pubkey,

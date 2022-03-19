@@ -130,7 +130,7 @@ impl InstructionBuilder {
         transform_state: crate::state::Transform,
         args: ExecuteTransformArgs,
     ) -> Result<Vec<Instruction>> {
-        let (pda, _nonce) = Pubkey::find_program_address(&[crate::state::SEED], &crate::ID);
+        let (pda, _nonce) = Pubkey::find_program_address(&[crate::state::TOKENITIS_PDA], &crate::ID);
         let mut accounts = vec![
             AccountMeta::new_readonly(spl_token::ID, false),
             AccountMeta::new_readonly(*transform, false),

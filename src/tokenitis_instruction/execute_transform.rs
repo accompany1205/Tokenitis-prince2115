@@ -1,4 +1,4 @@
-use crate::state::{Transform, SEED};
+use crate::state::{Tokenitis, Transform, TOKENITIS_PDA};
 use crate::tokenitis_instruction::TokenitisInstruction;
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::program_pack::Pack;
@@ -34,8 +34,8 @@ pub enum Direction {
 
 struct ExecuteTransformAccounts<'a> {
     token_program: &'a AccountInfo<'a>,
-    state: &'a AccountInfo<'a>,
-    pda: &'a AccountInfo<'a>,
+    tokenitis: &'a AccountInfo<'a>,
+    transform: &'a AccountInfo<'a>,
     caller: &'a AccountInfo<'a>,
     caller_inputs: Vec<&'a AccountInfo<'a>>,
     inputs: Vec<&'a AccountInfo<'a>>,
@@ -52,29 +52,29 @@ impl<'a> ExecuteTransform<'a> {
         let accounts = &mut accounts.iter();
 
         let token_program = next_account_info(accounts)?;
-        let state = next_account_info(accounts)?;
-        let pda = next_account_info(accounts)?;
+        let tokenitis = next_account_info(accounts)?;
+        let transform = next_account_info(accounts)?;
         let caller = next_account_info(accounts)?;
 
-        let program_state = Transform::deserialize(&mut &**state.data.borrow())?;
+        let transform_state = Transform::deserialize(&mut &**transform.data.borrow())?;
 
         let mut caller_inputs: Vec<&AccountInfo> = Vec::new();
-        for _ in 0..program_state.inputs.len() {
+        for _ in 0..transform_state.inputs.len() {
             caller_inputs.push(next_account_info(accounts)?)
         }
 
         let mut inputs: Vec<&AccountInfo> = Vec::new();
-        for _ in 0..program_state.inputs.len() {
+        for _ in 0..transform_state.inputs.len() {
             inputs.push(next_account_info(accounts)?)
         }
 
         let mut caller_outputs: Vec<&AccountInfo> = Vec::new();
-        for _ in 0..program_state.outputs.len() {
+        for _ in 0..transform_state.outputs.len() {
             caller_outputs.push(next_account_info(accounts)?)
         }
 
         let mut outputs: Vec<&AccountInfo> = Vec::new();
-        for _ in 0..program_state.outputs.len() {
+        for _ in 0..transform_state.outputs.len() {
             outputs.push(next_account_info(accounts)?)
         }
 
@@ -82,8 +82,8 @@ impl<'a> ExecuteTransform<'a> {
             program_id,
             accounts: ExecuteTransformAccounts {
                 token_program,
-                state,
-                pda,
+                tokenitis,
+                transform,
                 caller,
                 caller_inputs,
                 inputs,
@@ -104,8 +104,8 @@ impl TokenitisInstruction for ExecuteTransform<'_> {
     // and retrieve funds from smart contract to caller's output token account
     fn execute(&mut self) -> ProgramResult {
         let accounts = &self.accounts;
-        let program_state = Transform::deserialize(&mut &**accounts.state.data.borrow())?;
-        let (pda, nonce) = Pubkey::find_program_address(&[SEED], &self.program_id);
+        let transform_state = Transform::deserialize(&mut &**accounts.transform.data.borrow())?;
+        let (tokenitis, nonce) = Tokenitis::find_tokenitis_address(&self.program_id);
 
         let mut transfer_params: Vec<(&AccountInfo, &AccountInfo, &AccountInfo, u64)> = Vec::new();
         for i in 0..accounts.caller_inputs.len() {
@@ -113,7 +113,7 @@ impl TokenitisInstruction for ExecuteTransform<'_> {
             let dst = *accounts.inputs.index(i);
             let authority = accounts.caller;
             let mint = Account::unpack(&**src.data.borrow())?.mint;
-            let amount = program_state
+            let amount = transform_state
                 .inputs
                 .get(&mint)
                 .ok_or(ProgramError::InvalidArgument)?
@@ -124,9 +124,9 @@ impl TokenitisInstruction for ExecuteTransform<'_> {
         for i in 0..accounts.caller_outputs.len() {
             let src = *accounts.outputs.index(i);
             let dst = *accounts.caller_outputs.index(i);
-            let authority = accounts.pda;
+            let authority = accounts.tokenitis;
             let mint = Account::unpack(&**src.data.borrow())?.mint;
-            let amount = program_state
+            let amount = transform_state
                 .outputs
                 .get(&mint)
                 .ok_or(ProgramError::InvalidArgument)?
@@ -137,10 +137,10 @@ impl TokenitisInstruction for ExecuteTransform<'_> {
         for (mut src, mut dst, mut authority, amount) in transfer_params {
             if self.args.direction == Direction::Reverse {
                 std::mem::swap(&mut src, &mut dst);
-                if authority.key.eq(&pda) {
+                if authority.key.eq(&tokenitis) {
                     authority = accounts.caller;
                 } else {
-                    authority = accounts.pda;
+                    authority = accounts.tokenitis;
                 }
             }
 
@@ -152,7 +152,7 @@ impl TokenitisInstruction for ExecuteTransform<'_> {
                 &[authority.key],
                 amount,
             )?;
-            if !authority.key.eq(&pda) {
+            if !authority.key.eq(&tokenitis) {
                 invoke(
                     &transfer_ix,
                     &[
@@ -171,7 +171,7 @@ impl TokenitisInstruction for ExecuteTransform<'_> {
                         authority.clone(),
                         accounts.token_program.clone(),
                     ],
-                    &[&[SEED, &[nonce]]],
+                    &[&[TOKENITIS_PDA, &[nonce]]],
                 )?;
             }
         }
