@@ -104,20 +104,19 @@ impl InstructionBuilder {
         input_args.sort();
         let mut input_mints: Vec<AccountMeta> = Vec::new();
         let mut inputs: Vec<AccountMeta> = Vec::new();
-        input_args.iter().for_each(|(mint, tok)| {
-            input_mints.push(AccountMeta::new_readonly(*mint, false));
+        for (mint, tok) in input_args {
+            input_mints.push(AccountMeta::new_readonly(mint, false));
             inputs.push(AccountMeta::new(tok.account, false))
-        });
+        }
 
         let mut output_args: Vec<(Pubkey, Token)> = args.outputs.clone().into_iter().collect();
         output_args.sort();
         let mut output_mints: Vec<AccountMeta> = Vec::new();
         let mut outputs: Vec<AccountMeta> = Vec::new();
-        output_args.iter().for_each(|(mint, tok)| {
-            output_mints.push(AccountMeta::new_readonly(*mint, false));
+        for (mint, tok) in output_args {
+            output_mints.push(AccountMeta::new_readonly(mint, false));
             outputs.push(AccountMeta::new(tok.account, false))
-        });
-
+        }
         let accounts = vec![accounts, input_mints, inputs, output_mints, outputs].concat();
 
         Ok(vec![Instruction {
@@ -135,12 +134,10 @@ impl InstructionBuilder {
         user_inputs: BTreeMap<Pubkey, Pubkey>,
         user_outputs: BTreeMap<Pubkey, Pubkey>,
     ) -> Result<Vec<Instruction>> {
-        let (tokenitis, _nonce) = Tokenitis::find_tokenitis_address(&program_id);
         let (transform, _nonce) =
             Tokenitis::find_transform_address(&program_id, transform_state.id);
         let mut accounts = vec![
             AccountMeta::new_readonly(spl_token::ID, false),
-            AccountMeta::new_readonly(tokenitis, false),
             AccountMeta::new_readonly(transform, false),
             AccountMeta::new_readonly(*caller, true),
         ];

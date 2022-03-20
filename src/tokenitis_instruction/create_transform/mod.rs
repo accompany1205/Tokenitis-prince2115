@@ -67,12 +67,12 @@ impl<'a> CreateTransform<'a> {
         }
 
         let mut output_mints: Vec<&AccountInfo> = Vec::new();
-        for _ in 0..(args.inputs.len()) {
+        for _ in 0..(args.outputs.len()) {
             output_mints.push(next_account_info(accounts)?)
         }
 
         let mut outputs: Vec<&AccountInfo> = Vec::new();
-        for _ in 0..(args.inputs.len()) {
+        for _ in 0..(args.outputs.len()) {
             outputs.push(next_account_info(accounts)?)
         }
 

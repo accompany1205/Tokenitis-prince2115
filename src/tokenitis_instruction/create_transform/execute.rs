@@ -50,7 +50,7 @@ impl CreateTransform<'_> {
             accounts.creator,
             accounts.transform,
             accounts.system_program,
-            Tokenitis::transform_seed(tokenitis.num_transforms).as_slice(),
+            Tokenitis::transform_seed(transform.id).as_slice(),
         )?;
         transform.serialize(&mut &mut accounts.transform.data.borrow_mut()[..])?;
 

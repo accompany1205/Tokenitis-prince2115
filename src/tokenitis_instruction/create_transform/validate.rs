@@ -46,7 +46,11 @@ impl CreateTransform<'_> {
 
         let (tokenitis_addr, _) = Tokenitis::find_tokenitis_address(&self.program_id);
         if *accounts.tokenitis.key != tokenitis_addr {
-            msg!("invalid tokenitis account");
+            msg!(
+                "invalid tokenitis account, expected - {}, got - {}",
+                tokenitis_addr,
+                accounts.tokenitis.key
+            );
             return Err(ProgramError::InvalidArgument);
         }
 
@@ -59,9 +63,14 @@ impl CreateTransform<'_> {
         let (transform_addr, _) =
             Tokenitis::find_transform_address(&self.program_id, transform_num + 1);
         if *accounts.transform.key != transform_addr {
-            msg!("invalid transform account");
+            msg!(
+                "invalid transform account, expected - {}, got - {}",
+                transform_addr,
+                accounts.transform.key
+            );
             return Err(ProgramError::InvalidArgument);
         }
+
         let mut inputs = args
             .inputs
             .clone()
@@ -109,7 +118,7 @@ impl CreateTransform<'_> {
         }
 
         let mut outputs = args
-            .inputs
+            .outputs
             .clone()
             .into_iter()
             .collect::<Vec<(Pubkey, Token)>>();
