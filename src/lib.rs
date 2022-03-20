@@ -2,6 +2,7 @@ extern crate borsh;
 extern crate solana_program;
 extern crate spl_token;
 
+pub mod errors;
 pub mod sdk;
 pub mod state;
 pub mod tokenitis_instruction;

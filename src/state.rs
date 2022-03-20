@@ -17,6 +17,7 @@ pub struct Tokenitis {
 #[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 pub struct Transform {
     pub initialized: bool,
+    pub id: u64,
     pub metadata: TransformMetadata,
     pub inputs: BTreeMap<Pubkey, Token>,
     pub outputs: BTreeMap<Pubkey, Token>,
@@ -43,6 +44,7 @@ impl Tokenitis {
 impl Transform {
     pub fn transform_len(args: CreateTransformArgs) -> core::result::Result<usize, ProgramError> {
         Ok(Transform {
+            id: u64::MAX,
             initialized: true,
             metadata: args.metadata.clone(),
             inputs: args.inputs.clone(),
@@ -59,7 +61,7 @@ pub struct TransformMetadata {
     pub image: String,
 }
 
-#[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq, Debug)]
+#[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq, Debug, Ord, PartialOrd, Eq)]
 pub struct Token {
     pub account: Pubkey,
     pub amount: u64,

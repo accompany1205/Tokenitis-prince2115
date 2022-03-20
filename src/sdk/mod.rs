@@ -1,4 +1,4 @@
-use crate::state::Tokenitis;
+use crate::state::{Token, Tokenitis};
 use crate::tokenitis_instruction::create_transform::CreateTransformArgs;
 use crate::tokenitis_instruction::execute_transform::ExecuteTransformArgs;
 use crate::tokenitis_instruction::TokenitisInstructionType;
@@ -93,19 +93,32 @@ impl InstructionBuilder {
         let (tokenitis, _nonce) = Tokenitis::find_tokenitis_address(&program_id);
         let (transform, _nonce) = Tokenitis::find_transform_address(&program_id, transform_num);
 
-        let mut accounts = vec![
+        let accounts = vec![
             AccountMeta::new_readonly(solana_program::system_program::id(), false),
             AccountMeta::new_readonly(spl_token::ID, false),
             AccountMeta::new(tokenitis, false),
             AccountMeta::new(transform, false),
             AccountMeta::new(*creator, true),
         ];
-        args.inputs
-            .iter()
-            .for_each(|(_, tok)| accounts.push(AccountMeta::new(tok.account, false)));
-        args.outputs
-            .iter()
-            .for_each(|(_, tok)| accounts.push(AccountMeta::new(tok.account, false)));
+        let mut input_args: Vec<(Pubkey, Token)> = args.inputs.clone().into_iter().collect();
+        input_args.sort();
+        let mut input_mints: Vec<AccountMeta> = Vec::new();
+        let mut inputs: Vec<AccountMeta> = Vec::new();
+        input_args.iter().for_each(|(mint, tok)| {
+            input_mints.push(AccountMeta::new_readonly(mint.clone(), false));
+            inputs.push(AccountMeta::new(tok.account, false))
+        });
+
+        let mut output_args: Vec<(Pubkey, Token)> = args.outputs.clone().into_iter().collect();
+        output_args.sort();
+        let mut output_mints: Vec<AccountMeta> = Vec::new();
+        let mut outputs: Vec<AccountMeta> = Vec::new();
+        output_args.iter().for_each(|(mint, tok)| {
+            output_mints.push(AccountMeta::new_readonly(mint.clone(), false));
+            outputs.push(AccountMeta::new(tok.account, false))
+        });
+
+        let accounts = vec![accounts, input_mints, inputs, output_mints, outputs].concat();
 
         Ok(vec![Instruction {
             program_id,
@@ -117,23 +130,31 @@ impl InstructionBuilder {
     pub fn execute_transform(
         program_id: Pubkey,
         caller: &Pubkey,
-        transform: &Pubkey,
         transform_state: crate::state::Transform,
         args: ExecuteTransformArgs,
+        user_inputs: BTreeMap<Pubkey, Pubkey>,
+        user_outputs: BTreeMap<Pubkey, Pubkey>,
     ) -> Result<Vec<Instruction>> {
         let (tokenitis, _nonce) = Tokenitis::find_tokenitis_address(&program_id);
+        let (transform, _nonce) =
+            Tokenitis::find_transform_address(&program_id, transform_state.id);
         let mut accounts = vec![
             AccountMeta::new_readonly(spl_token::ID, false),
             AccountMeta::new_readonly(tokenitis, false),
-            AccountMeta::new_readonly(*transform, false),
+            AccountMeta::new_readonly(transform, false),
             AccountMeta::new_readonly(*caller, true),
         ];
 
+        let mut inputs = transform_state
+            .inputs
+            .into_iter()
+            .collect::<Vec<(Pubkey, Token)>>();
+        inputs.sort();
         let mut caller_inputs: Vec<AccountMeta> = Vec::new();
         let mut program_inputs: Vec<AccountMeta> = Vec::new();
-        for (mint, tok) in transform_state.inputs.iter() {
+        for (mint, tok) in inputs.iter() {
             caller_inputs.push(AccountMeta::new(
-                *args.user_inputs.get(mint).ok_or(format!(
+                *user_inputs.get(mint).ok_or(format!(
                     "could not find caller token account for mint - {}",
                     mint.clone()
                 ))?,
@@ -142,11 +163,16 @@ impl InstructionBuilder {
             program_inputs.push(AccountMeta::new(tok.account, false))
         }
 
+        let mut outputs = transform_state
+            .outputs
+            .into_iter()
+            .collect::<Vec<(Pubkey, Token)>>();
+        outputs.sort();
         let mut caller_outputs: Vec<AccountMeta> = Vec::new();
         let mut program_outputs: Vec<AccountMeta> = Vec::new();
-        for (mint, tok) in transform_state.outputs.iter() {
+        for (mint, tok) in outputs.iter() {
             caller_outputs.push(AccountMeta::new(
-                *args.user_outputs.get(mint).ok_or(format!(
+                *user_outputs.get(mint).ok_or(format!(
                     "could not find caller token account for mint - {}",
                     mint.clone()
                 ))?,
@@ -155,11 +181,11 @@ impl InstructionBuilder {
             program_outputs.push(AccountMeta::new(tok.account, false))
         }
 
-        for acc in [
-            caller_inputs.as_slice(),
-            program_inputs.as_slice(),
-            caller_outputs.as_slice(),
-            program_outputs.as_slice(),
+        for acc in vec![
+            caller_inputs,
+            program_inputs,
+            caller_outputs,
+            program_outputs,
         ]
         .concat()
         {

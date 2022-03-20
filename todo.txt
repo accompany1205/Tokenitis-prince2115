@@ -1,4 +1,3 @@
 // TODO add validation?
 // TODO add infinite mint
-// TODO add proper program errors
-// TODO move util into seperate create since its not part of the sc
+// TODO move sdk into seperate create since its not part of the sc
