@@ -105,7 +105,7 @@ impl InstructionBuilder {
         let mut input_mints: Vec<AccountMeta> = Vec::new();
         let mut inputs: Vec<AccountMeta> = Vec::new();
         input_args.iter().for_each(|(mint, tok)| {
-            input_mints.push(AccountMeta::new_readonly(mint.clone(), false));
+            input_mints.push(AccountMeta::new_readonly(*mint, false));
             inputs.push(AccountMeta::new(tok.account, false))
         });
 
@@ -114,7 +114,7 @@ impl InstructionBuilder {
         let mut output_mints: Vec<AccountMeta> = Vec::new();
         let mut outputs: Vec<AccountMeta> = Vec::new();
         output_args.iter().for_each(|(mint, tok)| {
-            output_mints.push(AccountMeta::new_readonly(mint.clone(), false));
+            output_mints.push(AccountMeta::new_readonly(*mint, false));
             outputs.push(AccountMeta::new(tok.account, false))
         });
 

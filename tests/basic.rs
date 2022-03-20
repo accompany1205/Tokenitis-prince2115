@@ -4,7 +4,6 @@ use borsh::BorshDeserialize;
 
 use solana_client::rpc_client::RpcClient;
 
-
 use solana_program::{
     instruction::Instruction, message::Message, native_token::LAMPORTS_PER_SOL, program_pack::Pack,
     pubkey::Pubkey,
@@ -276,15 +275,14 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
     // Execute tokenitis forward
     let args = ExecuteTransformArgs {
         direction: Direction::Forward,
-        user_inputs: user_inputs.clone(),
-        user_outputs: user_outputs.clone(),
     };
     let instructions = InstructionBuilder::execute_transform(
         tokenitis::id(),
         user,
-        &transform_pub,
         transform_state.clone(),
         args.clone(),
+        user_inputs.clone(),
+        user_outputs.clone(),
     )?;
     let sig = create_and_send_tx(&client, instructions, vec![&user_keypair], Some(user))?;
     confirm_transactions(&client, vec![sig])?;
@@ -354,15 +352,14 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
     // Execute tokenitis reverse
     let args = ExecuteTransformArgs {
         direction: Direction::Reverse,
-        user_inputs,
-        user_outputs,
     };
     let instructions = InstructionBuilder::execute_transform(
         tokenitis::id(),
         user,
-        &transform_pub,
         transform_state,
         args.clone(),
+        user_inputs,
+        user_outputs,
     )?;
     let sig = create_and_send_tx(&client, instructions, vec![&user_keypair], Some(user))?;
     confirm_transactions(&client, vec![sig])?;
