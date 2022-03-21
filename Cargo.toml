@@ -4,13 +4,13 @@ version = "0.1.0"
 edition = "2018"
 
 [dependencies]
-solana-program = { git = "https://github.com/solana-labs/solana", branch="master" }
-spl-token = { git = "https://github.com/shravanshetty1/solana-program-library", branch="master", features = ["no-entrypoint"] }
+solana-program = "1.10.3"
+spl-token = { git = "https://github.com/shravanshetty1/solana-program-library", branch="ata-1.0.3", features = ["no-entrypoint"] }
 borsh = "0.9.3"
 
 [dev-dependencies]
-solana-client = { git = "https://github.com/solana-labs/solana", branch="master" }
-solana-sdk = { git = "https://github.com/solana-labs/solana", branch="master" }
+solana-client = "1.10.3"
+solana-sdk = "1.10.3"
 tokio = "1.17.0"
 
 
