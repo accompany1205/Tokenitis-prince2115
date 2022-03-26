@@ -32,6 +32,7 @@ pub enum Direction {
 struct ExecuteTransformAccounts<'a> {
     token_program: &'a AccountInfo<'a>,
     transform: &'a AccountInfo<'a>,
+    transform_creator: &'a AccountInfo<'a>,
     caller: &'a AccountInfo<'a>,
     caller_inputs: Vec<&'a AccountInfo<'a>>,
     inputs: Vec<&'a AccountInfo<'a>>,
@@ -49,6 +50,7 @@ impl<'a> ExecuteTransform<'a> {
 
         let token_program = next_account_info(accounts)?;
         let transform = next_account_info(accounts)?;
+        let transform_creator = next_account_info(accounts)?;
         let caller = next_account_info(accounts)?;
 
         let transform_state = Transform::deserialize(&mut &**transform.data.borrow())?;
@@ -78,6 +80,7 @@ impl<'a> ExecuteTransform<'a> {
             accounts: ExecuteTransformAccounts {
                 token_program,
                 transform,
+                transform_creator,
                 caller,
                 caller_inputs,
                 inputs,

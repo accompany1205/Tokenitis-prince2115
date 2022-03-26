@@ -18,7 +18,9 @@ pub struct Tokenitis {
 pub struct Transform {
     pub initialized: bool,
     pub id: u64,
+    pub creator: Pubkey,
     pub metadata: TransformMetadata,
+    pub fee: Option<u64>,
     pub inputs: BTreeMap<Pubkey, Token>,
     pub outputs: BTreeMap<Pubkey, Token>,
 }
@@ -47,8 +49,10 @@ impl Transform {
             id: u64::MAX,
             initialized: true,
             metadata: args.metadata.clone(),
+            fee: None,
             inputs: args.inputs.clone(),
             outputs: args.outputs,
+            creator: Default::default(),
         }
         .try_to_vec()?
         .len())

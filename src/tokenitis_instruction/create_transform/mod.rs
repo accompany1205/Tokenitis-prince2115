@@ -24,6 +24,7 @@ pub struct CreateTransform<'a> {
 #[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 pub struct CreateTransformArgs {
     pub metadata: TransformMetadata,
+    pub fee: Option<u64>,
     pub inputs: BTreeMap<Pubkey, Token>,
     pub outputs: BTreeMap<Pubkey, Token>,
 }

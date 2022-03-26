@@ -40,7 +40,9 @@ impl CreateTransform<'_> {
         let transform = Transform {
             initialized: true,
             id: tokenitis.num_transforms,
+            creator: accounts.creator.key.clone(),
             metadata: args.metadata,
+            fee: args.fee.clone(),
             inputs: args.inputs.into_iter().collect(),
             outputs: args.outputs.into_iter().collect(),
         };
