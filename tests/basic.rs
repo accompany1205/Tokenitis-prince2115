@@ -110,6 +110,7 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
             name: "test123".to_string(),
             image: "".to_string(),
         },
+        fee: Some(5),
         inputs,
         outputs,
     };

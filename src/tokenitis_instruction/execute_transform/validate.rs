@@ -2,7 +2,7 @@ use crate::state::{Token, Tokenitis, Transform};
 use crate::tokenitis_instruction::execute_transform::ExecuteTransform;
 
 use borsh::BorshDeserialize;
-use solana_program::program_pack::Pack;
+use solana_program::program_pack::{IsInitialized, Pack};
 use solana_program::{entrypoint::ProgramResult, msg, program_error::ProgramError, pubkey::Pubkey};
 use spl_token::state::Account;
 use std::ops::Index;
@@ -52,6 +52,24 @@ impl ExecuteTransform<'_> {
             if caller_input_account_info.owner != *accounts.caller.key {
                 msg!("invalid input at index - {}, unexpected owner of caller_input, expected - {}, got - {}",i, accounts.caller.key,caller_input_account_info.owner);
                 return Err(ProgramError::InvalidArgument);
+            }
+
+            if transform_state.fee.is_some() {
+                let fee_account = accounts.fee_accounts.index(i);
+                let expected_fee_account =
+                    spl_associated_token_account::get_associated_token_address(
+                        &transform_state.creator,
+                        mint,
+                    );
+                if *fee_account.key != expected_fee_account {
+                    msg!("invalid input at index - {}, unexpected fee account, expected - {}, got - {}",i, expected_fee_account,fee_account.key);
+                    return Err(ProgramError::InvalidArgument);
+                }
+                let fee_account = spl_token::state::Account::unpack(&**fee_account.data.borrow())?;
+                if !fee_account.is_initialized() {
+                    msg!("invalid input at index - {}, unexpected fee account, expected initialized, got uninitialized",i);
+                    return Err(ProgramError::InvalidArgument);
+                }
             }
         }
 

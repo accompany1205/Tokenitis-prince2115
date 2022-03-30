@@ -37,6 +37,24 @@ impl InstructionBuilder {
         Ok(instructions)
     }
 
+    pub fn create_transform_fee_accounts(
+        funding_acc: &Pubkey,
+        transform_creator: &Pubkey,
+        args: CreateTransformArgs,
+    ) -> Result<Vec<Instruction>> {
+        let mut instructions: Vec<Instruction> = Vec::new();
+        args.inputs.iter().for_each(|(mint, _)| {
+            let ix = spl_associated_token_account::create_associated_token_account(
+                funding_acc,
+                transform_creator,
+                mint,
+            );
+            instructions.push(ix);
+        });
+
+        Ok(instructions)
+    }
+
     pub fn create_trarnsform_output_accounts(
         initializer: &Pubkey,
         spl_token_rent: u64,
@@ -149,6 +167,7 @@ impl InstructionBuilder {
         inputs.sort();
         let mut caller_inputs: Vec<AccountMeta> = Vec::new();
         let mut program_inputs: Vec<AccountMeta> = Vec::new();
+        let mut fee_accounts: Vec<AccountMeta> = Vec::new();
         for (mint, tok) in inputs.iter() {
             caller_inputs.push(AccountMeta::new(
                 *user_inputs.get(mint).ok_or(format!(
@@ -157,7 +176,15 @@ impl InstructionBuilder {
                 ))?,
                 false,
             ));
-            program_inputs.push(AccountMeta::new(tok.account, false))
+            program_inputs.push(AccountMeta::new(tok.account, false));
+
+            if transform_state.fee.is_some() {
+                let fee_account = spl_associated_token_account::get_associated_token_address(
+                    &transform_state.creator,
+                    mint,
+                );
+                fee_accounts.push(AccountMeta::new(fee_account, false))
+            }
         }
 
         let mut outputs = transform_state
@@ -183,6 +210,7 @@ impl InstructionBuilder {
             program_inputs,
             caller_outputs,
             program_outputs,
+            fee_accounts,
         ]
         .concat()
         {

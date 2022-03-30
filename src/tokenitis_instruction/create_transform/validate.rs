@@ -70,6 +70,13 @@ impl CreateTransform<'_> {
             );
             return Err(ProgramError::InvalidArgument);
         }
+        
+        if let Some(fee) = args.fee {
+            if !(1..=10).contains(&fee) {
+                msg!("invalid fee amount - fee has to be between 1 and 10");
+                return Err(ProgramError::InvalidArgument);
+            }
+        }
 
         let mut inputs = args
             .inputs

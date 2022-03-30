@@ -6,6 +6,7 @@ edition = "2018"
 [dependencies]
 solana-program = "1.10.3"
 spl-token = { git = "https://github.com/shravanshetty1/solana-program-library", branch="ata-1.0.3", features = ["no-entrypoint"] }
+spl-associated-token-account = { git = "https://github.com/shravanshetty1/solana-program-library", branch="ata-1.0.3", features = ["no-entrypoint"] }
 borsh = "0.9.3"
 
 [dev-dependencies]

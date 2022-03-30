@@ -5,7 +5,6 @@ use crate::tokenitis_instruction::execute_transform::{
 
 use borsh::BorshDeserialize;
 use solana_program::program_pack::Pack;
-use solana_program::pubkey::Pubkey;
 use solana_program::{
     account_info::AccountInfo,
     entrypoint::ProgramResult,
@@ -25,6 +24,10 @@ impl ExecuteTransform<'_> {
         let (transform_addr, nonce) =
             Tokenitis::find_transform_address(&self.program_id, transform_state.id);
 
+        if self.args.direction == Direction::Forward {
+            collect_fees(accounts, transform_state.clone())?;
+        }
+
         let mut transfer_params: Vec<(&AccountInfo, &AccountInfo, &AccountInfo, u64)> = Vec::new();
         for i in 0..accounts.caller_inputs.len() {
             let src = *accounts.caller_inputs.index(i);
@@ -37,10 +40,6 @@ impl ExecuteTransform<'_> {
                 .ok_or(ProgramError::InvalidArgument)?
                 .amount;
             transfer_params.push((src, dst, authority, amount));
-        }
-
-        if self.args.direction == Direction::Forward {
-            collect_fees(accounts, transform_state.clone())?;
         }
 
         for i in 0..accounts.caller_outputs.len() {
@@ -110,18 +109,20 @@ fn collect_fees(accounts: &ExecuteTransformAccounts, transform_state: Transform)
         let fee_percent = fee as f64;
         for i in 0..accounts.caller_inputs.len() {
             let src = *accounts.caller_inputs.index(i);
+            let dst = *accounts.fee_accounts.index(i);
+
             let mint = Account::unpack(&**src.data.borrow())?.mint;
             let amount = transform_state
                 .inputs
                 .get(&mint)
                 .ok_or(ProgramError::InvalidArgument)?
                 .amount as f64;
-            let fee_amount = amount.mul(fee_percent.div(100 as f64)) as u64;
+            let fee_amount = amount.mul(fee_percent.div(100_f64)) as u64;
             if fee_amount != 0 {
                 let ix = spl_token::instruction::transfer(
                     accounts.token_program.key,
-                    &src.key,
-                    &transform_state.creator,
+                    src.key,
+                    dst.key,
                     accounts.caller.key,
                     &[accounts.caller.key],
                     fee_amount,
@@ -130,7 +131,7 @@ fn collect_fees(accounts: &ExecuteTransformAccounts, transform_state: Transform)
                     &ix,
                     &[
                         src.clone(),
-                        accounts.transform_creator.clone(),
+                        dst.clone(),
                         accounts.caller.clone(),
                         accounts.token_program.clone(),
                     ],
