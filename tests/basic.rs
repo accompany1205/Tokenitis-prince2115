@@ -24,6 +24,11 @@ use tokenitis::state::{Tokenitis, Transform};
 use tokenitis::tokenitis_instruction::create_transform::CreateTransformArgs;
 use tokenitis::tokenitis_instruction::execute_transform::{Direction, ExecuteTransformArgs};
 
+const TRANSFORM_AMOUNT: u64 = 50;
+const FEE_PERCENT: u64 = 5;
+const OUTPUT_PROGRAM_ACC_SUPPLY: u64 = 1000;
+const INPUT_CALLER_ACC_SUPPLY: u64 = 1000;
+
 #[test]
 fn basic() -> Result<(), Box<dyn std::error::Error>> {
     let user_keypair = Keypair::new();
@@ -79,38 +84,38 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
         input_mint1.pubkey(),
         Token {
             account: input1_program_account.pubkey(),
-            amount: 10,
+            amount: TRANSFORM_AMOUNT,
         },
     );
     inputs.insert(
         input_mint2.pubkey(),
         Token {
             account: input2_program_account.pubkey(),
-            amount: 10,
+            amount: TRANSFORM_AMOUNT,
         },
     );
     outputs.insert(
         output_mint1.pubkey(),
         Token {
             account: output1_program_account.pubkey(),
-            amount: 10,
+            amount: TRANSFORM_AMOUNT,
         },
     );
     outputs.insert(
         output_mint2.pubkey(),
         Token {
             account: output2_program_account.pubkey(),
-            amount: 10,
+            amount: TRANSFORM_AMOUNT,
         },
     );
-    output_supply.insert(output_mint1.pubkey(), 100);
-    output_supply.insert(output_mint2.pubkey(), 100);
+    output_supply.insert(output_mint1.pubkey(), OUTPUT_PROGRAM_ACC_SUPPLY);
+    output_supply.insert(output_mint2.pubkey(), OUTPUT_PROGRAM_ACC_SUPPLY);
     let args = CreateTransformArgs {
         metadata: TransformMetadata {
             name: "test123".to_string(),
             image: "".to_string(),
         },
-        fee: Some(5),
+        fee: Some(FEE_PERCENT),
         inputs,
         outputs,
     };
@@ -151,7 +156,11 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
         ],
         Some(user),
     )?;
-    confirm_transactions(&client, vec![sig1, sig2])?;
+
+    let instructions = InstructionBuilder::create_transform_fee_accounts(user, user, args.clone())?;
+    let sig3 = create_and_send_tx(&client, instructions, vec![&user_keypair], Some(user))?;
+    confirm_transactions(&client, vec![sig1, sig2, sig3])?;
+
     println!("created program accounts");
 
     let (tokenitis_pub, _) = tokenitis::state::Tokenitis::find_tokenitis_address(&tokenitis::id());
@@ -192,7 +201,7 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
             user_account,
             user,
             &[user],
-            100,
+            INPUT_CALLER_ACC_SUPPLY,
             0,
         )?)
     }
@@ -225,14 +234,14 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
             .get_token_account_balance(&input1_user_account.pubkey())?
             .amount
             .parse::<u64>()?,
-        100
+        INPUT_CALLER_ACC_SUPPLY
     );
     assert_eq!(
         client
             .get_token_account_balance(&input2_user_account.pubkey())?
             .amount
             .parse::<u64>()?,
-        100
+        INPUT_CALLER_ACC_SUPPLY
     );
     assert_eq!(
         client
@@ -267,14 +276,14 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
             .get_token_account_balance(&output1_program_account.pubkey())?
             .amount
             .parse::<u64>()?,
-        100
+        OUTPUT_PROGRAM_ACC_SUPPLY,
     );
     assert_eq!(
         client
             .get_token_account_balance(&output2_program_account.pubkey())?
             .amount
             .parse::<u64>()?,
-        100
+        OUTPUT_PROGRAM_ACC_SUPPLY,
     );
 
     let (transform_pub, _) = tokenitis::state::Tokenitis::find_transform_address(
@@ -304,61 +313,86 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
         args,
     );
 
+    let fee = tokenitis::util::calculate_fee(TRANSFORM_AMOUNT, FEE_PERCENT);
+    let fee_account1 =
+        spl_associated_token_account::get_associated_token_address(user, &input_mint1.pubkey());
+    let fee_account2 =
+        spl_associated_token_account::get_associated_token_address(user, &input_mint2.pubkey());
+
+    println!(
+        "fee - {}, fee account1 - {:?}, fee account2 - {:?}\n",
+        fee, fee_account1, fee_account2
+    );
+
+    assert_eq!(
+        client
+            .get_token_account_balance(&fee_account1)?
+            .amount
+            .parse::<u64>()?,
+        fee,
+    );
+    assert_eq!(
+        client
+            .get_token_account_balance(&fee_account2)?
+            .amount
+            .parse::<u64>()?,
+        fee,
+    );
     assert_eq!(
         client
             .get_token_account_balance(&input1_user_account.pubkey())?
             .amount
             .parse::<u64>()?,
-        90
+        INPUT_CALLER_ACC_SUPPLY - TRANSFORM_AMOUNT - fee,
     );
     assert_eq!(
         client
             .get_token_account_balance(&input2_user_account.pubkey())?
             .amount
             .parse::<u64>()?,
-        90
+        INPUT_CALLER_ACC_SUPPLY - TRANSFORM_AMOUNT - fee,
     );
     assert_eq!(
         client
             .get_token_account_balance(&output1_user_account.pubkey())?
             .amount
             .parse::<u64>()?,
-        10
+        TRANSFORM_AMOUNT
     );
     assert_eq!(
         client
             .get_token_account_balance(&output2_user_account.pubkey())?
             .amount
             .parse::<u64>()?,
-        10
+        TRANSFORM_AMOUNT
     );
     assert_eq!(
         client
             .get_token_account_balance(&input1_program_account.pubkey())?
             .amount
             .parse::<u64>()?,
-        10
+        TRANSFORM_AMOUNT
     );
     assert_eq!(
         client
             .get_token_account_balance(&input2_program_account.pubkey())?
             .amount
             .parse::<u64>()?,
-        10
+        TRANSFORM_AMOUNT,
     );
     assert_eq!(
         client
             .get_token_account_balance(&output1_program_account.pubkey())?
             .amount
             .parse::<u64>()?,
-        90
+        OUTPUT_PROGRAM_ACC_SUPPLY - TRANSFORM_AMOUNT,
     );
     assert_eq!(
         client
             .get_token_account_balance(&output2_program_account.pubkey())?
             .amount
             .parse::<u64>()?,
-        90
+        OUTPUT_PROGRAM_ACC_SUPPLY - TRANSFORM_AMOUNT,
     );
 
     // Execute tokenitis reverse
@@ -383,17 +417,31 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
 
     assert_eq!(
         client
+            .get_token_account_balance(&fee_account1)?
+            .amount
+            .parse::<u64>()?,
+        fee,
+    );
+    assert_eq!(
+        client
+            .get_token_account_balance(&fee_account2)?
+            .amount
+            .parse::<u64>()?,
+        fee,
+    );
+    assert_eq!(
+        client
             .get_token_account_balance(&input1_user_account.pubkey())?
             .amount
             .parse::<u64>()?,
-        100
+        INPUT_CALLER_ACC_SUPPLY - fee,
     );
     assert_eq!(
         client
             .get_token_account_balance(&input2_user_account.pubkey())?
             .amount
             .parse::<u64>()?,
-        100
+        INPUT_CALLER_ACC_SUPPLY - fee,
     );
     assert_eq!(
         client
@@ -428,14 +476,14 @@ fn basic() -> Result<(), Box<dyn std::error::Error>> {
             .get_token_account_balance(&output1_program_account.pubkey())?
             .amount
             .parse::<u64>()?,
-        100
+        OUTPUT_PROGRAM_ACC_SUPPLY,
     );
     assert_eq!(
         client
             .get_token_account_balance(&output2_program_account.pubkey())?
             .amount
             .parse::<u64>()?,
-        100
+        OUTPUT_PROGRAM_ACC_SUPPLY,
     );
 
     Ok(())

@@ -3,6 +3,7 @@ use crate::tokenitis_instruction::execute_transform::{
     Direction, ExecuteTransform, ExecuteTransformAccounts,
 };
 
+use crate::util::calculate_fee;
 use borsh::BorshDeserialize;
 use solana_program::program_pack::Pack;
 use solana_program::{
@@ -105,8 +106,7 @@ impl ExecuteTransform<'_> {
 }
 
 fn collect_fees(accounts: &ExecuteTransformAccounts, transform_state: Transform) -> ProgramResult {
-    if let Some(fee) = transform_state.fee {
-        let fee_percent = fee as f64;
+    if let Some(fee_percent) = transform_state.fee {
         for i in 0..accounts.caller_inputs.len() {
             let src = *accounts.caller_inputs.index(i);
             let dst = *accounts.fee_accounts.index(i);
@@ -116,8 +116,8 @@ fn collect_fees(accounts: &ExecuteTransformAccounts, transform_state: Transform)
                 .inputs
                 .get(&mint)
                 .ok_or(ProgramError::InvalidArgument)?
-                .amount as f64;
-            let fee_amount = amount.mul(fee_percent.div(100_f64)) as u64;
+                .amount;
+            let fee_amount = calculate_fee(amount, fee_percent);
             if fee_amount != 0 {
                 let ix = spl_token::instruction::transfer(
                     accounts.token_program.key,
