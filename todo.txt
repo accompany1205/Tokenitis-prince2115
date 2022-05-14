@@ -1,2 +1,2 @@
 // TODO add infinite mint
-// TODO move sdk into seperate create since its not part of the sc
+// TODO move sdk into separate crate since it's not part of the sc
