@@ -8,6 +8,9 @@ Tokenitis enables you to combine or split existing spl-tokens to new spl-tokens.
 * Fractional NFT's - Split NFT into fungible tokens
 * Easily setup token mints
 
+### Preview 
+![](home.png)
+
 ### Test
 ```
 cargo test -- --nocapture
