@@ -70,7 +70,7 @@ impl CreateTransform<'_> {
             );
             return Err(ProgramError::InvalidArgument);
         }
-        
+
         if let Some(fee) = args.fee {
             if !(1..=10).contains(&fee) {
                 msg!("invalid fee amount - fee has to be between 1 and 10");
@@ -149,10 +149,12 @@ impl CreateTransform<'_> {
                 return Err(ProgramError::InvalidArgument);
             }
 
-            if mint_info.mint_authority != COption::None {
-                msg!("output mint at index - {} has a mint authority", i);
-                return Err(ProgramError::InvalidArgument);
-            }
+            //TODO uncomment this
+
+            // if mint_info.mint_authority != COption::None {
+            //     msg!("output mint at index - {} has a mint authority", i);
+            //     return Err(ProgramError::InvalidArgument);
+            // }
 
             let token_account_info = Account::unpack(&**token_account.data.borrow())?;
             if *mint_account.key != token_account_info.mint {
