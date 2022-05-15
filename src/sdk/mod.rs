@@ -55,7 +55,8 @@ impl InstructionBuilder {
         Ok(instructions)
     }
 
-    pub fn create_trarnsform_output_accounts(
+    // TODO add fixed supply
+    pub fn create_transform_output_accounts(
         initializer: &Pubkey,
         spl_token_rent: u64,
         spl_mint_rent: u64,
@@ -96,7 +97,7 @@ impl InstructionBuilder {
                 &[initializer],
             )?;
             instructions.push(mint_entire_supply);
-            instructions.push(make_fixed_supply);
+            // instructions.push(make_fixed_supply);
         }
 
         Ok(instructions)
