@@ -13,4 +13,4 @@ pub mod entrypoint;
 
 type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>;
 
-solana_program::declare_id!("FyNEh6YBfJNKEExMDe27X7gDH3FXWp5oGAuMTCTYNqre");
+solana_program::declare_id!("GE15QxJUB1NeLGzRM4bUaRexQGjdHafmAuAvh5buM8j8");
